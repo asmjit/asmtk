@@ -156,6 +156,22 @@ uint32_t AsmTokenizer::next(AsmToken* token) {
       c = cur[0];
     }
 
+    // Support symbols that start with a number, like '0tox' inside {}.
+    if (cur != end) {
+      m = CharMap[cur[0]];
+      if (m <= kCharSym) {
+        do {
+          if (++cur == end) break;
+          c = cur[0];
+          m = CharMap[c];
+        } while (m <= kCharSym);
+
+        _cur = cur;
+        return token->setData(AsmToken::kNSym, start, cur);
+      }
+    }
+
+    // Definitely a number.
     _cur = cur;
     token->u64 = val;
     return token->setData(AsmToken::kU64, start, cur);

@@ -19,6 +19,7 @@ struct AsmToken {
     kEnd,
     kNL,
     kSym,
+    kNSym,
     kU64,
     kF64,
     kLCurl,
@@ -36,6 +37,19 @@ struct AsmToken {
     kOther,
     kInvalid
   };
+
+  inline bool is(char c0) {
+    return len == 1 && data[0] == c0;
+  }
+  inline bool is(char c0, char c1) {
+    return len == 2 && data[0] == c0 && data[1] == c1;
+  }
+  inline bool is(char c0, char c1, char c2) {
+    return len == 3 && data[0] == c0 && data[1] == c1 && data[2] == c2;
+  }
+  inline bool is(char c0, char c1, char c2, char c3) {
+    return len == 4 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3;
+  }
 
   inline uint32_t setData(uint32_t type, const uint8_t* data, size_t len) {
     //printf("TOKEN: %.*s\n", (int)len, data);

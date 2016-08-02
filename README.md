@@ -4,7 +4,7 @@ AsmTK
 Assembler toolkit based on AsmJit.
 
   * [Official Repository (asmjit/asmtk)](https://github.com/asmjit/asmtk)
-  * [Official Blog (asmbits)] (https://asmbits.blogspot.com/ncr)
+  * [Official Blog (asmbits)](https://asmbits.blogspot.com/ncr)
   * [Official Chat (gitter)](https://gitter.im/asmjit/asmjit)
   * [Permissive ZLIB license](./LICENSE.md)
 

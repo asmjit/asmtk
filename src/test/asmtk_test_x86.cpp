@@ -7,9 +7,6 @@ static const char asmData[] =
   "mov eax, 0xFFFFFFFF\n"
   "mov ax, fs\n"
   "mov fs, ax\n"
-  "pand mm0, mm1\n"
-  "paddw xmm0, xmm1\n"
-  "vpaddw ymm0, ymm1, ymm7\n"
   "mov edx, [rax]\n"
   "mov edx, [rax + 0]\n"
   "mov edx, [rax + 128]\n"
@@ -20,6 +17,10 @@ static const char asmData[] =
   "mov edx, [rax + rcx * 4 + 64]\n"
   "mov edx, [rax + rcx * 8 + 128 + 128]\n"
   "mov edx, fs:[rax]\n"
+  "pand mm0, mm1\n"
+  "paddw xmm0, xmm1\n"
+  "vpaddw ymm0, ymm1, ymm7\n"
+  "vaddpd zmm0 {k1}{z}, zmm1, [rax] {1tox}\n"
   ;
 
 int main(int argc, char* argv[]) {
@@ -29,10 +30,10 @@ int main(int argc, char* argv[]) {
   FileLogger logger(stdout);
   logger.addOptions(Logger::kOptionBinaryForm);
 
-  CodeHolder holder(ArchInfo::kIdX64);
-  holder.setLogger(&logger);
+  CodeHolder code(ArchInfo::kIdX64);
+  code.setLogger(&logger);
 
-  X86Assembler a(&holder);
+  X86Assembler a(&code);
   AsmParser p(&a);
 
   Error err = p.parse(asmData);

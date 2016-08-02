@@ -16,8 +16,6 @@
 namespace asmtk {
 
 using asmjit::Error;
-using asmjit::Operand_;
-using asmjit::X86Assembler;
 
 // ============================================================================
 // [asmtk::AsmParser]
@@ -26,16 +24,14 @@ using asmjit::X86Assembler;
 //! Asm parser.
 class AsmParser {
 public:
-  AsmParser(X86Assembler* assembler);
+  AsmParser(asmjit::CodeEmitter* emitter);
   ~AsmParser();
 
   Error parse(const char* input, size_t len);
   inline Error parse(const char* input) { return parse(input, asmjit::kInvalidIndex); }
 
 private:
-  Error _parseOp(Operand_& op, AsmToken* termToken);
-
-  X86Assembler* _assembler;
+  asmjit::CodeEmitter* _emitter;
   AsmTokenizer _tokenizer;
 };
 

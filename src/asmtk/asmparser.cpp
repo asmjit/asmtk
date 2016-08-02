@@ -58,8 +58,8 @@ static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
 // [asmtk::AsmParser]
 // ============================================================================
 
-AsmParser::AsmParser(X86Assembler* assembler)
-  : _assembler(assembler) {}
+AsmParser::AsmParser(CodeEmitter* emitter)
+  : _emitter(emitter) {}
 AsmParser::~AsmParser() {}
 
 // ============================================================================
@@ -218,106 +218,23 @@ Done:
   return true;
 }
 
-Error AsmParser::parse(const char* input, size_t len) {
-  if (len == kInvalidIndex) len = ::strlen(input);
-  if (len == 0) return kErrorOk;
-  _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
-
-  Error err = kErrorOk;
-  uint32_t archId = _assembler->getArchId();
-
-  for (;;) {
-    AsmToken base;
-    uint32_t type = _tokenizer.next(&base);
-
-    if (type == AsmToken::kSym) {
-      AsmToken t;
-      type = _tokenizer.next(&t);
-
-      if (type == AsmToken::kColon) {
-        // Parse a label.
-        // TODO: Label support.
-      }
-      else {
-        // Parse instruction.
-        uint32_t instId = X86Inst::getIdByName(reinterpret_cast<const char*>(base.data), base.len);
-        uint32_t options = 0;
-        if (instId == kInvalidInst) return kErrorUnknownInstruction;
-
-        Operand opMask;
-        Operand opArray[6];
-        uint32_t opCount = 0;
-
-        // Parse operands.
-        for (;;) {
-          err = _parseOp(opArray[opCount], &t);
-          if (err) return err;
-
-          opCount++;
-          type = _tokenizer.next(&t);
-
-          if (type == AsmToken::kComma) {
-            if (opCount == ASMJIT_ARRAY_SIZE(opArray))
-              return kErrorInvalidState;
-
-            type = _tokenizer.next(&t);
-            continue;
-          }
-
-          if (type == AsmToken::kNL)
-            break;
-
-          return kErrorInvalidState;
-        }
-
-        err = X86Inst::validate(archId, instId, options, opMask, opArray, opCount);
-        if (err) return err;
-
-        _assembler->setOptions(options);
-
-        if (opMask.isReg()) _assembler->setOpMask(opMask);
-        if (opCount > 4) _assembler->setOp4(opArray[4]);
-        if (opCount > 5) _assembler->setOp5(opArray[5]);
-
-        err = _assembler->_emit(instId, opArray[0], opArray[1], opArray[2], opArray[3]);
-        if (err) return err;
-      }
-    }
-
-    if (type == AsmToken::kNL) {
-      continue;
-    }
-
-    if (type == AsmToken::kEnd)
-      break;
-
-    return kErrorInvalidState;
-  }
-
-  return kErrorOk;
-}
-
-Error AsmParser::_parseOp(Operand_& op, AsmToken* token) {
+static Error x86ParseOp(AsmTokenizer& tokenizer, Operand_& op, AsmToken* token) {
   uint32_t type = token->type;
   Operand seg;
 
-  // --------------------------------------------------------------------------
-  // [Register | Label]
-  // --------------------------------------------------------------------------
-
-  // Parse a symbol, which could be a register or label reference.
+  // Register or label - parse a symbol, which could be a register or label reference.
   if (type == AsmToken::kSym) {
     if (x86ParseReg(op, token->data, token->len)) {
       // A segment register followed by a colon (':') describes a segment of a
       // memory operand - in such case we store the segment and jump to MemOp.
       if (static_cast<X86Reg&>(op).isSeg()) {
         AsmToken tTmp;
-        if (_tokenizer.next(token) == AsmToken::kColon &&
-            _tokenizer.next(&tTmp) == AsmToken::kLBracket) {
+        if (tokenizer.next(token) == AsmToken::kColon &&
+            tokenizer.next(&tTmp) == AsmToken::kLBracket) {
           seg = op;
           goto MemOp;
         }
-        _tokenizer.back(token);
+        tokenizer.back(token);
       }
       return kErrorOk;
     }
@@ -327,11 +244,7 @@ Error AsmParser::_parseOp(Operand_& op, AsmToken* token) {
     }
   }
 
-  // --------------------------------------------------------------------------
-  // [Memory Operand]
-  // --------------------------------------------------------------------------
-
-  // Parse opening '['.
+  // Memory address - parse opening '['.
   if (type == AsmToken::kLBracket) {
 MemOp:
     Operand base;
@@ -341,28 +254,28 @@ MemOp:
 
     // Parse "base + index * scale" part.
     uint32_t opType = AsmToken::kInvalid;
-    type = _tokenizer.next(token);
+    type = tokenizer.next(token);
 
     if (type == AsmToken::kSym) {
       if (!x86ParseReg(base, token->data, token->len))
         return kErrorIllegalAddressing;
 
-      opType = _tokenizer.next(token);
+      opType = tokenizer.next(token);
       if (opType == AsmToken::kMul) {
         index = base;
         base.reset();
         goto MemMul;
       }
       else if (opType == AsmToken::kAdd) {
-        type = _tokenizer.next(token);
+        type = tokenizer.next(token);
         if (type == AsmToken::kSym) {
           if (!x86ParseReg(index, token->data, token->len))
             return kErrorIllegalAddressing;
 
-          opType = _tokenizer.next(token);
+          opType = tokenizer.next(token);
           if (opType == AsmToken::kMul) {
 MemMul:
-            type = _tokenizer.next(token);
+            type = tokenizer.next(token);
             if (type != AsmToken::kU64)
               return kErrorIllegalAddressing;
 
@@ -374,12 +287,12 @@ MemMul:
               default:
                 return kErrorIllegalAddressing;
             }
-            opType = _tokenizer.next(token);
+            opType = tokenizer.next(token);
           }
         }
         else if (type == AsmToken::kU64) {
           disp = token->u64;
-          opType = _tokenizer.next(token);
+          opType = tokenizer.next(token);
         }
         else {
           return kErrorIllegalAddressing;
@@ -397,7 +310,7 @@ MemMul:
     }
     else if (type == AsmToken::kU64) {
       disp = token->u64;
-      opType = _tokenizer.next(token);
+      opType = tokenizer.next(token);
     }
     else {
       return kErrorIllegalAddressing;
@@ -430,7 +343,7 @@ MemMul:
         return kErrorIllegalAddressing;
 
 MemDisp:
-      type = _tokenizer.next(token);
+      type = tokenizer.next(token);
       if (type != AsmToken::kU64)
         return kErrorIllegalAddressing;
 
@@ -439,18 +352,15 @@ MemDisp:
       else
         disp -= token->u64;
 
-      opType = _tokenizer.next(token);
+      opType = tokenizer.next(token);
     }
   }
 
-  // --------------------------------------------------------------------------
-  // [Immediate Operand]
-  // --------------------------------------------------------------------------
-
+  // Immediate.
   if (type == AsmToken::kU64 || type == AsmToken::kSub) {
     bool negative = (type == AsmToken::kSub);
     if (negative) {
-      type = _tokenizer.next(token);
+      type = tokenizer.next(token);
       if (type != AsmToken::kU64) return kErrorInvalidState;
     }
 
@@ -459,6 +369,118 @@ MemDisp:
   }
 
   return kErrorInvalidState;
+}
+
+Error AsmParser::parse(const char* input, size_t len) {
+  if (len == kInvalidIndex) len = ::strlen(input);
+  if (len == 0) return kErrorOk;
+  _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
+
+  Error err = kErrorOk;
+  uint32_t archId = _emitter->getArchId();
+
+  for (;;) {
+    AsmToken base;
+    uint32_t type = _tokenizer.next(&base);
+
+    if (type == AsmToken::kSym) {
+      AsmToken t;
+      type = _tokenizer.next(&t);
+
+      if (type == AsmToken::kColon) {
+        // Parse a label.
+        // TODO: Label support.
+      }
+      else {
+        // Parse instruction.
+        uint32_t instId = X86Inst::getIdByName(reinterpret_cast<const char*>(base.data), base.len);
+        uint32_t options = 0;
+        if (instId == kInvalidInst) return kErrorUnknownInstruction;
+
+        Operand opMask;
+        Operand opArray[6];
+        uint32_t opCount = 0;
+
+        // Parse operands.
+        for (;;) {
+          err = x86ParseOp(_tokenizer, opArray[opCount], &t);
+          if (err) return err;
+          type = _tokenizer.next(&t);
+
+          // Parse {} options introduced by AVX-512.
+          if (type == AsmToken::kLCurl) {
+            do {
+              type = _tokenizer.next(&t);
+              if (type == AsmToken::kSym || type == AsmToken::kNSym) {
+                if (t.len == 2 && t.data[0] == 'k' && (uint8_t)(t.data[1] - '0') < 8) {
+                  if (opCount != 0 || !opMask.isNone())
+                    return kErrorInvalidState;
+                  opMask = X86KReg(t.data[1] - '0');
+                }
+                else if (t.is('z')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionEvexZero))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionEvexZero;
+                }
+                else if (t.is('1', 't', 'o', 'x')) {
+                  if (!opArray[opCount].isMem() || (options & X86Inst::kOptionEvex1ToX))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionEvex1ToX;
+                }
+                // TODO: {sae} and {er}.
+              }
+              else {
+                return kErrorInvalidState;
+              }
+
+              type = _tokenizer.next(&t);
+              if (type != AsmToken::kRCurl)
+                return kErrorInvalidState;
+
+              type = _tokenizer.next(&t);
+            } while (type == AsmToken::kLCurl);
+          }
+
+          opCount++;
+          if (type == AsmToken::kComma) {
+            if (opCount == ASMJIT_ARRAY_SIZE(opArray))
+              return kErrorInvalidState;
+
+            type = _tokenizer.next(&t);
+            continue;
+          }
+
+          if (type == AsmToken::kNL)
+            break;
+
+          return kErrorInvalidState;
+        }
+
+        err = X86Inst::validate(archId, instId, options, opMask, opArray, opCount);
+        if (err) return err;
+
+        _emitter->setOptions(options);
+
+        if (opMask.isReg()) _emitter->setOpMask(opMask);
+        if (opCount > 4) _emitter->setOp4(opArray[4]);
+        if (opCount > 5) _emitter->setOp5(opArray[5]);
+
+        err = _emitter->_emit(instId, opArray[0], opArray[1], opArray[2], opArray[3]);
+        if (err) return err;
+      }
+    }
+
+    if (type == AsmToken::kNL) {
+      continue;
+    }
+
+    if (type == AsmToken::kEnd)
+      break;
+
+    return kErrorInvalidState;
+  }
+
+  return kErrorOk;
 }
 
 } // asmtk namespace
