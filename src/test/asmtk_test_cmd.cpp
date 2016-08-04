@@ -8,11 +8,11 @@ using namespace asmtk;
 static uint32_t detectArch(int argc, char* argv[]) {
   for (int i = 1; i < argc; i++) {
     if (::strcmp(argv[i], "--x86") == 0)
-      return ArchInfo::kIdX86;
+      return Arch::kTypeX86;
     if (::strcmp(argv[i], "--x64") == 0)
-      return ArchInfo::kIdX64;
+      return Arch::kTypeX64;
   }
-  return ArchInfo::kIdX64;
+  return Arch::kTypeX64;
 }
 
 static void dumpCode(const uint8_t* buf, size_t len) {
@@ -54,8 +54,8 @@ static bool isCommand(const char* str, const char* cmd) {
 }
 
 int main(int argc, char* argv[]) {
-  uint32_t arch = detectArch(argc, argv);
-  const char* archString = arch == ArchInfo::kIdX86 ? "x86" : "x64";
+  uint32_t archType = detectArch(argc, argv);
+  const char* archString = archType == Arch::kTypeX86 ? "x86" : "x64";
 
   fprintf(stdout, "=========================================================\n" );
   fprintf(stdout, "AsmTk [Assembler toolkit based on AsmJit]\n"                 );
@@ -72,7 +72,9 @@ int main(int argc, char* argv[]) {
   StringLogger logger;
   logger.addOptions(Logger::kOptionBinaryForm);
 
-  CodeHolder code(arch);
+  CodeHolder code;
+
+  code.init(CodeInfo(archType));
   code.setLogger(&logger);
 
   X86Assembler a(&code);
@@ -85,7 +87,7 @@ int main(int argc, char* argv[]) {
 
     if (isCommand(input, ".clear")) {
       code.reset(false);  // Detaches everything.
-      code.setArchId(arch);
+      code.init(CodeInfo(archType));
       code.setLogger(&logger);
       code.attach(&a);
       continue;

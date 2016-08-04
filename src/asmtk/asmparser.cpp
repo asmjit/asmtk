@@ -371,31 +371,62 @@ MemDisp:
   return kErrorInvalidState;
 }
 
+static Error x86ParseInstAndOptions(AsmTokenizer& tokenizer, uint32_t& instId, uint32_t& options, AsmToken* token) {
+  for (;;) {
+    // First try to match the instruction as instruction options are unlikely.
+    instId = X86Inst::getIdByName(reinterpret_cast<const char*>(token->data), token->len);
+    if (instId != kInvalidInst) return kErrorOk;
+
+    // Okay, maybe it's an option?
+    if (token->is('s', 'h', 'o', 'r', 't')) {
+      if (options & X86Inst::kOptionShortForm)
+        return kErrorIllegalInstruction;
+      options |= X86Inst::kOptionShortForm;
+    }
+    else if (token->is('l', 'o', 'n', 'g')) {
+      if (options & X86Inst::kOptionLongForm)
+        return kErrorIllegalInstruction;
+      options |= X86Inst::kOptionLongForm;
+    }
+    else if (token->is('r', 'e', 'x')) {
+      if (options & X86Inst::kOptionRex)
+        return kErrorIllegalInstruction;
+      options |= X86Inst::kOptionRex;
+    }
+    else {
+      return kErrorUnknownInstruction;
+    }
+
+    if (tokenizer.next(token) != AsmToken::kSym)
+      return kErrorIllegalInstruction;
+  }
+}
+
 Error AsmParser::parse(const char* input, size_t len) {
   if (len == kInvalidIndex) len = ::strlen(input);
   if (len == 0) return kErrorOk;
   _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
 
-  Error err = kErrorOk;
-  uint32_t archId = _emitter->getArchId();
-
+  uint32_t archType = _emitter->getArchType();
   for (;;) {
-    AsmToken base;
-    uint32_t type = _tokenizer.next(&base);
+    AsmToken token;
+    uint32_t tType = _tokenizer.next(&token);
 
-    if (type == AsmToken::kSym) {
-      AsmToken t;
-      type = _tokenizer.next(&t);
+    if (tType == AsmToken::kSym) {
+      AsmToken tmp;
 
-      if (type == AsmToken::kColon) {
+      tType = _tokenizer.next(&tmp);
+      if (tType == AsmToken::kColon) {
         // Parse a label.
         // TODO: Label support.
       }
       else {
         // Parse instruction.
-        uint32_t instId = X86Inst::getIdByName(reinterpret_cast<const char*>(base.data), base.len);
+        _tokenizer.back(&tmp);
+
+        uint32_t instId = 0;
         uint32_t options = 0;
-        if (instId == kInvalidInst) return kErrorUnknownInstruction;
+        ASMJIT_PROPAGATE(x86ParseInstAndOptions(_tokenizer, instId, options, &token));
 
         Operand opMask;
         Operand opArray[6];
@@ -403,29 +434,34 @@ Error AsmParser::parse(const char* input, size_t len) {
 
         // Parse operands.
         for (;;) {
-          err = x86ParseOp(_tokenizer, opArray[opCount], &t);
-          if (err) return err;
-          type = _tokenizer.next(&t);
+          tType = _tokenizer.next(&token);
+
+          // Instruction without operands...
+          if (tType == AsmToken::kNL && opCount == 0) break;
+
+          // Parse operand.
+          ASMJIT_PROPAGATE(x86ParseOp(_tokenizer, opArray[opCount], &token));
 
           // Parse {} options introduced by AVX-512.
-          if (type == AsmToken::kLCurl) {
+          tType = _tokenizer.next(&token);
+          if (tType == AsmToken::kLCurl) {
             do {
-              type = _tokenizer.next(&t);
-              if (type == AsmToken::kSym || type == AsmToken::kNSym) {
-                if (t.len == 2 && t.data[0] == 'k' && (uint8_t)(t.data[1] - '0') < 8) {
+              tType = _tokenizer.next(&token);
+              if (tType == AsmToken::kSym || tType == AsmToken::kNSym) {
+                if (token.len == 2 && token.data[0] == 'k' && (uint8_t)(token.data[1] - '0') < 8) {
                   if (opCount != 0 || !opMask.isNone())
                     return kErrorInvalidState;
-                  opMask = X86KReg(t.data[1] - '0');
+                  opMask = X86KReg(token.data[1] - '0');
                 }
-                else if (t.is('z')) {
-                  if (opCount != 0 || (options & X86Inst::kOptionEvexZero))
+                else if (token.is('z')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionKZ))
                     return kErrorInvalidState;
-                  options |= X86Inst::kOptionEvexZero;
+                  options |= X86Inst::kOptionKZ;
                 }
-                else if (t.is('1', 't', 'o', 'x')) {
-                  if (!opArray[opCount].isMem() || (options & X86Inst::kOptionEvex1ToX))
+                else if (token.is('1', 't', 'o', 'x')) {
+                  if (!opArray[opCount].isMem() || (options & X86Inst::kOption1ToX))
                     return kErrorInvalidState;
-                  options |= X86Inst::kOptionEvex1ToX;
+                  options |= X86Inst::kOption1ToX;
                 }
                 // TODO: {sae} and {er}.
               }
@@ -433,48 +469,42 @@ Error AsmParser::parse(const char* input, size_t len) {
                 return kErrorInvalidState;
               }
 
-              type = _tokenizer.next(&t);
-              if (type != AsmToken::kRCurl)
+              tType = _tokenizer.next(&token);
+              if (tType != AsmToken::kRCurl)
                 return kErrorInvalidState;
 
-              type = _tokenizer.next(&t);
-            } while (type == AsmToken::kLCurl);
+              tType = _tokenizer.next(&token);
+            } while (tType == AsmToken::kLCurl);
           }
 
           opCount++;
-          if (type == AsmToken::kComma) {
+          if (tType == AsmToken::kComma) {
             if (opCount == ASMJIT_ARRAY_SIZE(opArray))
               return kErrorInvalidState;
-
-            type = _tokenizer.next(&t);
             continue;
           }
 
-          if (type == AsmToken::kNL)
+          if (tType == AsmToken::kNL)
             break;
 
           return kErrorInvalidState;
         }
 
-        err = X86Inst::validate(archId, instId, options, opMask, opArray, opCount);
-        if (err) return err;
-
+        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opMask, opArray, opCount));
         _emitter->setOptions(options);
 
         if (opMask.isReg()) _emitter->setOpMask(opMask);
         if (opCount > 4) _emitter->setOp4(opArray[4]);
         if (opCount > 5) _emitter->setOp5(opArray[5]);
 
-        err = _emitter->_emit(instId, opArray[0], opArray[1], opArray[2], opArray[3]);
-        if (err) return err;
+        ASMJIT_PROPAGATE(_emitter->_emit(instId, opArray[0], opArray[1], opArray[2], opArray[3]));
       }
     }
 
-    if (type == AsmToken::kNL) {
+    if (tType == AsmToken::kNL)
       continue;
-    }
 
-    if (type == AsmToken::kEnd)
+    if (tType == AsmToken::kEnd)
       break;
 
     return kErrorInvalidState;

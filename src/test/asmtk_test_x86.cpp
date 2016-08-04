@@ -30,7 +30,8 @@ int main(int argc, char* argv[]) {
   FileLogger logger(stdout);
   logger.addOptions(Logger::kOptionBinaryForm);
 
-  CodeHolder code(ArchInfo::kIdX64);
+  CodeHolder code;
+  code.init(CodeInfo(Arch::kTypeX64));
   code.setLogger(&logger);
 
   X86Assembler a(&code);
