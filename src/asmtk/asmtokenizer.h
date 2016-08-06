@@ -51,7 +51,7 @@ struct AsmToken {
     return len == 4 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3;
   }
   inline bool is(char c0, char c1, char c2, char c3, char c4) {
-    return len == 4 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3 && data[4] == c4;
+    return len == 5 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3 && data[4] == c4;
   }
 
   inline uint32_t setData(uint32_t type, const uint8_t* data, size_t len) {

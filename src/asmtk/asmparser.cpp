@@ -393,6 +393,11 @@ static Error x86ParseInstAndOptions(AsmTokenizer& tokenizer, uint32_t& instId, u
         return kErrorIllegalInstruction;
       options |= X86Inst::kOptionRex;
     }
+    else if (token->is('m', 'o', 'd', 'm', 'r')) {
+      if (options & X86Inst::kOptionModMR)
+        return kErrorIllegalInstruction;
+      options |= X86Inst::kOptionModMR;
+    }
     else {
       return kErrorUnknownInstruction;
     }
