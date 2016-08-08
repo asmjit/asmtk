@@ -27,10 +27,8 @@ public:
   AsmParser(asmjit::CodeEmitter* emitter);
   ~AsmParser();
 
-  Error parse(const char* input, size_t len);
-  inline Error parse(const char* input) { return parse(input, asmjit::kInvalidIndex); }
+  Error parse(const char* input, size_t len = asmjit::kInvalidIndex);
 
-private:
   asmjit::CodeEmitter* _emitter;
   AsmTokenizer _tokenizer;
 };

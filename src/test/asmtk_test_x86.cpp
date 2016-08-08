@@ -21,6 +21,9 @@ static const char asmData[] =
   "paddw xmm0, xmm1\n"
   "vpaddw ymm0, ymm1, ymm7\n"
   "vaddpd zmm0 {k1}{z}, zmm1, [rax] {1tox}\n"
+  "test eax, eax\n"
+  "jz L1\n"
+  "L1:\n"
   ;
 
 int main(int argc, char* argv[]) {

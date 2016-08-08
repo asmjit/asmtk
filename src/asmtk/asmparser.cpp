@@ -66,7 +66,7 @@ AsmParser::~AsmParser() {}
 // [asmtk::AsmParser - Parse]
 // ============================================================================
 
-static bool x86ParseReg(Operand_& op, const uint8_t* s, size_t len) {
+static bool asmParseX86Reg(Operand_& op, const uint8_t* s, size_t len) {
   if (len < 2 || len > 5) return false;
   const uint8_t* sEnd = s + len;
 
@@ -218,29 +218,40 @@ Done:
   return true;
 }
 
-static Error x86ParseOp(AsmTokenizer& tokenizer, Operand_& op, AsmToken* token) {
+static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* name, size_t len) {
+  Label L = parser._emitter->getLabelByName(reinterpret_cast<const char*>(name), len);
+
+  if (!L.isValid()) {
+    L = parser._emitter->newNamedLabel(reinterpret_cast<const char*>(name), len);
+    if (!L.isValid()) return kErrorNoHeapMemory;
+  }
+
+  dst = L;
+  return kErrorOk;
+}
+
+static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* token) {
   uint32_t type = token->type;
   Operand seg;
 
   // Register or label - parse a symbol, which could be a register or label reference.
   if (type == AsmToken::kSym) {
-    if (x86ParseReg(op, token->data, token->len)) {
+    if (asmParseX86Reg(dst, token->data, token->len)) {
       // A segment register followed by a colon (':') describes a segment of a
       // memory operand - in such case we store the segment and jump to MemOp.
-      if (static_cast<X86Reg&>(op).isSeg()) {
+      if (static_cast<X86Reg&>(dst).isSeg()) {
         AsmToken tTmp;
-        if (tokenizer.next(token) == AsmToken::kColon &&
-            tokenizer.next(&tTmp) == AsmToken::kLBracket) {
-          seg = op;
+        if (parser._tokenizer.next(token) == AsmToken::kColon &&
+            parser._tokenizer.next(&tTmp) == AsmToken::kLBracket) {
+          seg = dst;
           goto MemOp;
         }
-        tokenizer.back(token);
+        parser._tokenizer.back(token);
       }
       return kErrorOk;
     }
     else {
-      // TODO: Label support.
-      return kErrorInvalidState;
+      return asmHandleSymbol(parser, dst, token->data, token->len);
     }
   }
 
@@ -254,28 +265,28 @@ MemOp:
 
     // Parse "base + index * scale" part.
     uint32_t opType = AsmToken::kInvalid;
-    type = tokenizer.next(token);
+    type = parser._tokenizer.next(token);
 
     if (type == AsmToken::kSym) {
-      if (!x86ParseReg(base, token->data, token->len))
+      if (!asmParseX86Reg(base, token->data, token->len))
         return kErrorIllegalAddressing;
 
-      opType = tokenizer.next(token);
+      opType = parser._tokenizer.next(token);
       if (opType == AsmToken::kMul) {
         index = base;
         base.reset();
         goto MemMul;
       }
       else if (opType == AsmToken::kAdd) {
-        type = tokenizer.next(token);
+        type = parser._tokenizer.next(token);
         if (type == AsmToken::kSym) {
-          if (!x86ParseReg(index, token->data, token->len))
+          if (!asmParseX86Reg(index, token->data, token->len))
             return kErrorIllegalAddressing;
 
-          opType = tokenizer.next(token);
+          opType = parser._tokenizer.next(token);
           if (opType == AsmToken::kMul) {
 MemMul:
-            type = tokenizer.next(token);
+            type = parser._tokenizer.next(token);
             if (type != AsmToken::kU64)
               return kErrorIllegalAddressing;
 
@@ -287,12 +298,12 @@ MemMul:
               default:
                 return kErrorIllegalAddressing;
             }
-            opType = tokenizer.next(token);
+            opType = parser._tokenizer.next(token);
           }
         }
         else if (type == AsmToken::kU64) {
           disp = token->u64;
-          opType = tokenizer.next(token);
+          opType = parser._tokenizer.next(token);
         }
         else {
           return kErrorIllegalAddressing;
@@ -310,7 +321,7 @@ MemMul:
     }
     else if (type == AsmToken::kU64) {
       disp = token->u64;
-      opType = tokenizer.next(token);
+      opType = parser._tokenizer.next(token);
     }
     else {
       return kErrorIllegalAddressing;
@@ -324,16 +335,16 @@ MemMul:
 
         int32_t disp32 = static_cast<int32_t>(static_cast<int64_t>(disp));
         if (base.isReg() && !index.isReg())
-          op = x86::ptr(static_cast<X86Gp&>(base), disp32);
+          dst = x86::ptr(static_cast<X86Gp&>(base), disp32);
         else if (base.isReg() && index.isReg())
-          op = x86::ptr(static_cast<X86Gp&>(base), static_cast<X86Gp&>(index), shift, disp32);
+          dst = x86::ptr(static_cast<X86Gp&>(base), static_cast<X86Gp&>(index), shift, disp32);
         else if (!base.isReg() && index.isReg())
-          op = x86::ptr(uint64_t(disp32), static_cast<X86Gp&>(index), shift);
+          dst = x86::ptr(uint64_t(disp32), static_cast<X86Gp&>(index), shift);
         else
-          op = x86::ptr(uint64_t(disp32));
+          dst = x86::ptr(uint64_t(disp32));
 
         if (seg.isReg())
-          static_cast<X86Mem&>(op).setSegment(static_cast<const X86Seg&>(seg));
+          static_cast<X86Mem&>(dst).setSegment(static_cast<const X86Seg&>(seg));
 
         return kErrorOk;
       }
@@ -343,7 +354,7 @@ MemMul:
         return kErrorIllegalAddressing;
 
 MemDisp:
-      type = tokenizer.next(token);
+      type = parser._tokenizer.next(token);
       if (type != AsmToken::kU64)
         return kErrorIllegalAddressing;
 
@@ -352,7 +363,7 @@ MemDisp:
       else
         disp -= token->u64;
 
-      opType = tokenizer.next(token);
+      opType = parser._tokenizer.next(token);
     }
   }
 
@@ -360,18 +371,18 @@ MemDisp:
   if (type == AsmToken::kU64 || type == AsmToken::kSub) {
     bool negative = (type == AsmToken::kSub);
     if (negative) {
-      type = tokenizer.next(token);
+      type = parser._tokenizer.next(token);
       if (type != AsmToken::kU64) return kErrorInvalidState;
     }
 
-    op = imm(negative ? -token->i64 : token->i64);
+    dst = imm(negative ? -token->i64 : token->i64);
     return kErrorOk;
   }
 
   return kErrorInvalidState;
 }
 
-static Error x86ParseInstAndOptions(AsmTokenizer& tokenizer, uint32_t& instId, uint32_t& options, AsmToken* token) {
+static Error asmParseX86Instruction(AsmParser& parser, uint32_t& instId, uint32_t& options, AsmToken* token) {
   for (;;) {
     // First try to match the instruction as instruction options are unlikely.
     instId = X86Inst::getIdByName(reinterpret_cast<const char*>(token->data), token->len);
@@ -402,7 +413,7 @@ static Error x86ParseInstAndOptions(AsmTokenizer& tokenizer, uint32_t& instId, u
       return kErrorUnknownInstruction;
     }
 
-    if (tokenizer.next(token) != AsmToken::kSym)
+    if (parser._tokenizer.next(token) != AsmToken::kSym)
       return kErrorIllegalInstruction;
   }
 }
@@ -422,8 +433,12 @@ Error AsmParser::parse(const char* input, size_t len) {
 
       tType = _tokenizer.next(&tmp);
       if (tType == AsmToken::kColon) {
-        // Parse a label.
-        // TODO: Label support.
+        // Parse bound label.
+        Label dst;
+        ASMJIT_PROPAGATE(asmHandleSymbol(*this, dst, token.data, token.len));
+        ASMJIT_PROPAGATE(_emitter->bind(dst));
+
+        tType = _tokenizer.next(&token);
       }
       else {
         // Parse instruction.
@@ -431,7 +446,7 @@ Error AsmParser::parse(const char* input, size_t len) {
 
         uint32_t instId = 0;
         uint32_t options = 0;
-        ASMJIT_PROPAGATE(x86ParseInstAndOptions(_tokenizer, instId, options, &token));
+        ASMJIT_PROPAGATE(asmParseX86Instruction(*this, instId, options, &token));
 
         Operand opMask;
         Operand opArray[6];
@@ -445,7 +460,7 @@ Error AsmParser::parse(const char* input, size_t len) {
           if (tType == AsmToken::kNL && opCount == 0) break;
 
           // Parse operand.
-          ASMJIT_PROPAGATE(x86ParseOp(_tokenizer, opArray[opCount], &token));
+          ASMJIT_PROPAGATE(asmParseX86Operand(*this, opArray[opCount], &token));
 
           // Parse {} options introduced by AVX-512.
           tType = _tokenizer.next(&token);
