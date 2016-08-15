@@ -17,40 +17,32 @@ using namespace asmjit;
 
 // TODO: Information about a register should be part of asmjit.
 struct X86RegInfo {
-  union {
-    struct {
-      uint8_t opType;
-      uint8_t regType;
-      uint8_t regClass;
-      uint8_t regSize;
-    };
-    uint32_t signature;
-  };
+  RegInfo info;
   uint32_t count;
 };
 
-#define DEFINE_REG(opType, regType, regClass, regSize, count) \
-  {{{ uint8_t(opType), uint8_t(regType), uint8_t(regClass), uint8_t(regSize) }}, count }
+#define DEFINE_REG(opType, regType, regKind, regSize, count) \
+  {{{ uint8_t(opType), uint8_t(regType), uint8_t(regKind), uint8_t(regSize) }}, count }
 static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
-  DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                 , 0 , 0  ),
-  DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                 , 0 , 0  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegRip         , X86Reg::kClassRip , 8 , 1  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegSeg         , X86Reg::kClassSeg , 2 , 7  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpbLo       , X86Reg::kClassGp  , 1 , 16 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpbHi       , X86Reg::kClassGp  , 1 , 4  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpw         , X86Reg::kClassGp  , 2 , 16 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpd         , X86Reg::kClassGp  , 4 , 16 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpq         , X86Reg::kClassGp  , 8 , 16 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegFp          , X86Reg::kClassFp  , 10, 8  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegMm          , X86Reg::kClassMm  , 8 , 8  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegK           , X86Reg::kClassK   , 8 , 8  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegXmm         , X86Reg::kClassXyz , 16, 32 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegYmm         , X86Reg::kClassXyz , 32, 32 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegZmm         , X86Reg::kClassXyz , 64, 32 ),
-  DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                 , 0 , 0  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegBnd         , X86Reg::kClassBnd , 16, 4  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegCr          , X86Reg::kClassCr  , 8 , 9  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegDr          , X86Reg::kClassDr  , 8 , 8  )
+  DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
+  DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegRip         , X86Reg::kKindRip , 8 , 1  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegSeg         , X86Reg::kKindSeg , 2 , 7  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpbLo       , X86Reg::kKindGp  , 1 , 16 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpbHi       , X86Reg::kKindGp  , 1 , 4  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpw         , X86Reg::kKindGp  , 2 , 16 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpd         , X86Reg::kKindGp  , 4 , 16 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegGpq         , X86Reg::kKindGp  , 8 , 16 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegFp          , X86Reg::kKindFp  , 10, 8  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegMm          , X86Reg::kKindMm  , 8 , 8  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegK           , X86Reg::kKindK   , 8 , 8  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegXmm         , X86Reg::kKindXyz , 16, 32 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegYmm         , X86Reg::kKindXyz , 32, 32 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegZmm         , X86Reg::kKindXyz , 64, 32 ),
+  DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegBnd         , X86Reg::kKindBnd , 16, 4  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegCr          , X86Reg::kKindCr  , 8 , 9  ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegDr          , X86Reg::kKindDr  , 8 , 8  )
 };
 #undef DEFINE_REG
 
@@ -214,7 +206,7 @@ TrySpBpSiDi:
   if (regId >= x86RegInfo[regType].count) return false;
 
 Done:
-  op._initReg(x86RegInfo[regType].signature, regId);
+  op._initReg(x86RegInfo[regType].info.signature, regId);
   return true;
 }
 
@@ -269,7 +261,7 @@ MemOp:
 
     if (type == AsmToken::kSym) {
       if (!asmParseX86Reg(base, token->data, token->len))
-        return kErrorIllegalAddressing;
+        return kErrorInvalidAddress;
 
       opType = parser._tokenizer.next(token);
       if (opType == AsmToken::kMul) {
@@ -281,14 +273,14 @@ MemOp:
         type = parser._tokenizer.next(token);
         if (type == AsmToken::kSym) {
           if (!asmParseX86Reg(index, token->data, token->len))
-            return kErrorIllegalAddressing;
+            return kErrorInvalidAddress;
 
           opType = parser._tokenizer.next(token);
           if (opType == AsmToken::kMul) {
 MemMul:
             type = parser._tokenizer.next(token);
             if (type != AsmToken::kU64)
-              return kErrorIllegalAddressing;
+              return kErrorInvalidAddress;
 
             switch (token->u64) {
               case 1: shift = 0; break;
@@ -296,7 +288,7 @@ MemMul:
               case 4: shift = 2; break;
               case 8: shift = 3; break;
               default:
-                return kErrorIllegalAddressing;
+                return kErrorInvalidAddress;
             }
             opType = parser._tokenizer.next(token);
           }
@@ -306,14 +298,14 @@ MemMul:
           opType = parser._tokenizer.next(token);
         }
         else {
-          return kErrorIllegalAddressing;
+          return kErrorInvalidAddress;
         }
       }
       else if (opType == AsmToken::kSub) {
         goto MemDisp;
       }
       else if (opType != AsmToken::kRBracket) {
-        return kErrorIllegalAddressing;
+        return kErrorInvalidAddress;
       }
     }
     else if (type == AsmToken::kAdd || type == AsmToken::kSub) {
@@ -324,14 +316,14 @@ MemMul:
       opType = parser._tokenizer.next(token);
     }
     else {
-      return kErrorIllegalAddressing;
+      return kErrorInvalidAddress;
     }
 
     for (;;) {
       // Parse closing ']'.
       if (opType == AsmToken::kRBracket) {
         if (!Utils::isInt32<int64_t>(static_cast<int32_t>(disp)))
-          return kErrorIllegalAddressing;
+          return kErrorInvalidAddress;
 
         int32_t disp32 = static_cast<int32_t>(static_cast<int64_t>(disp));
         if (base.isReg() && !index.isReg())
@@ -351,12 +343,12 @@ MemMul:
 
       // Displacement.
       if (opType != AsmToken::kAdd && opType != AsmToken::kSub)
-        return kErrorIllegalAddressing;
+        return kErrorInvalidAddress;
 
 MemDisp:
       type = parser._tokenizer.next(token);
       if (type != AsmToken::kU64)
-        return kErrorIllegalAddressing;
+        return kErrorInvalidAddress;
 
       if (opType == AsmToken::kAdd)
         disp += token->u64;
@@ -391,30 +383,30 @@ static Error asmParseX86Instruction(AsmParser& parser, uint32_t& instId, uint32_
     // Okay, maybe it's an option?
     if (token->is('s', 'h', 'o', 'r', 't')) {
       if (options & X86Inst::kOptionShortForm)
-        return kErrorIllegalInstruction;
+        return kErrorInvalidInstruction;
       options |= X86Inst::kOptionShortForm;
     }
     else if (token->is('l', 'o', 'n', 'g')) {
       if (options & X86Inst::kOptionLongForm)
-        return kErrorIllegalInstruction;
+        return kErrorInvalidInstruction;
       options |= X86Inst::kOptionLongForm;
     }
     else if (token->is('r', 'e', 'x')) {
       if (options & X86Inst::kOptionRex)
-        return kErrorIllegalInstruction;
+        return kErrorInvalidInstruction;
       options |= X86Inst::kOptionRex;
     }
     else if (token->is('m', 'o', 'd', 'm', 'r')) {
       if (options & X86Inst::kOptionModMR)
-        return kErrorIllegalInstruction;
+        return kErrorInvalidInstruction;
       options |= X86Inst::kOptionModMR;
     }
     else {
-      return kErrorUnknownInstruction;
+      return kErrorInvalidInstruction;
     }
 
     if (parser._tokenizer.next(token) != AsmToken::kSym)
-      return kErrorIllegalInstruction;
+      return kErrorInvalidInstruction;
   }
 }
 
@@ -448,7 +440,7 @@ Error AsmParser::parse(const char* input, size_t len) {
         uint32_t options = 0;
         ASMJIT_PROPAGATE(asmParseX86Instruction(*this, instId, options, &token));
 
-        Operand opMask;
+        Operand opExtra;
         Operand opArray[6];
         uint32_t opCount = 0;
 
@@ -469,9 +461,9 @@ Error AsmParser::parse(const char* input, size_t len) {
               tType = _tokenizer.next(&token);
               if (tType == AsmToken::kSym || tType == AsmToken::kNSym) {
                 if (token.len == 2 && token.data[0] == 'k' && (uint8_t)(token.data[1] - '0') < 8) {
-                  if (opCount != 0 || !opMask.isNone())
+                  if (opCount != 0 || !opExtra.isNone())
                     return kErrorInvalidState;
-                  opMask = X86KReg(token.data[1] - '0');
+                  opExtra = X86KReg(token.data[1] - '0');
                 }
                 else if (token.is('z')) {
                   if (opCount != 0 || (options & X86Inst::kOptionKZ))
@@ -510,10 +502,10 @@ Error AsmParser::parse(const char* input, size_t len) {
           return kErrorInvalidState;
         }
 
-        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opMask, opArray, opCount));
+        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
         _emitter->setOptions(options);
 
-        if (opMask.isReg()) _emitter->setOpMask(opMask);
+        if (opExtra.isReg()) _emitter->setOpExtra(opExtra);
         if (opCount > 4) _emitter->setOp4(opArray[4]);
         if (opCount > 5) _emitter->setOp5(opArray[5]);
 
