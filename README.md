@@ -87,7 +87,7 @@ int main(int argc, char* argv[]) {
   code.sync();
 
   // Now you can print the code, which is stored in the first section (.text).
-  CodeBuffer& buffer = code.getSections()[0]->buffer; // TODO: Make this nicer.
+  CodeBuffer& buffer = code.getSectionEntry(0)->buffer; // TODO: Make this nicer.
   dumpCode(buffer.data, buffer.length);
 
   return 0;

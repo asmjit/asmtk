@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
     if (isCommand(input, ".print")) {
       code.sync(); // First sync with the assembler.
 
-      CodeBuffer& buffer = code.getSections()[0]->buffer;
+      CodeBuffer& buffer = code.getSectionEntry(0)->buffer;
       dumpCode(buffer.data, buffer.length);
       continue;
     }

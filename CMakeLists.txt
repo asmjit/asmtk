@@ -5,14 +5,9 @@ include(CheckCXXCompilerFlag)
 # [AsmTK - Configuration]
 # =============================================================================
 
-# Embedding mode, asmtk will not create any targets (default FALSE).
-# set(ASMTK_EMBED FALSE)
-
-# Whether to build a static library (default FALSE).
-# set(ASMTK_STATIC FALSE)
-
-# Whether to build tests and samples (default FALSE).
-# set(ASMTK_BUILD_TEST FALSE)
+# set(ASMTK_EMBED FALSE)                        # Embed, asmtk will not create any targets.
+# set(ASMTK_STATIC FALSE)                       # Whether to build a static library.
+# set(ASMTK_BUILD_TEST FALSE)                   # Whether to build tests and samples.
 
 # =============================================================================
 # [AsmTK - Build / Embed]
@@ -29,7 +24,7 @@ endif()
 
 if(ASMTK_EMBED)
   set(ASMTK_SIGNATURE "${ASMTK_SIGNATURE} | Mode=Embed")
-  set(ASMTK_STATIC TRUE) # Implies ASMTK_STATIC.
+  set(ASMTK_STATIC TRUE)
 elseif(ASMTK_STATIC)
   set(ASMTK_SIGNATURE "${ASMTK_SIGNATURE} | Mode=Static")
 else()
