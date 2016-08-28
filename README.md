@@ -21,14 +21,14 @@ This project just started and is not complete. AsmTK at the moment requires asmj
 Features
 --------
 
-  * Asm parser that can parse everything that AsmJit provides.
-  * Assembles to `CodeGen`, which means that it can generare assembly directly or keep it in abstract form for further processing.
+  * Asm parser an parse everything that AsmJit provides (i.e. supports all instruction sets, named labels, etc...).
+  * Assembles to `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` emitters at runtime.
   * More to be added :)
 
 AsmParser Usage Guide
 ---------------------
 
-Assembler parsing is provided by `AsmParser` class, which emits to `CodeGen`:
+Assembler parsing is provided by `AsmParser` class, which emits to `CodeEmitter`:
 
 ```C++
 #include <asmtk/asmtk.h>

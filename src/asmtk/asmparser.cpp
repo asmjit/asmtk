@@ -36,9 +36,9 @@ static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegFp          , X86Reg::kKindFp  , 10, 8  ),
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegMm          , X86Reg::kKindMm  , 8 , 8  ),
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegK           , X86Reg::kKindK   , 8 , 8  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegXmm         , X86Reg::kKindXyz , 16, 32 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegYmm         , X86Reg::kKindXyz , 32, 32 ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegZmm         , X86Reg::kKindXyz , 64, 32 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegXmm         , X86Reg::kKindVec , 16, 32 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegYmm         , X86Reg::kKindVec , 32, 32 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegZmm         , X86Reg::kKindVec , 64, 32 ),
   DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegBnd         , X86Reg::kKindBnd , 16, 4  ),
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegCr          , X86Reg::kKindCr  , 8 , 9  ),
@@ -464,6 +464,7 @@ Error AsmParser::parse(const char* input, size_t len) {
                   if (opCount != 0 || !opExtra.isNone())
                     return kErrorInvalidState;
                   opExtra = X86KReg(token.data[1] - '0');
+                  options |= X86Inst::kOptionK;
                 }
                 else if (token.is('z')) {
                   if (opCount != 0 || (options & X86Inst::kOptionKZ))
@@ -475,7 +476,31 @@ Error AsmParser::parse(const char* input, size_t len) {
                     return kErrorInvalidState;
                   options |= X86Inst::kOption1ToX;
                 }
-                // TODO: {sae} and {er}.
+                else if (token.is('s', 'a', 'e')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionSAE))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionSAE;
+                }
+                else if (token.is('r', 'n')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionER))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionER | X86Inst::kOptionRN_SAE;
+                }
+                else if (token.is('r', 'd')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionER))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionER | X86Inst::kOptionRD_SAE;
+                }
+                else if (token.is('r', 'u')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionER))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionER | X86Inst::kOptionRU_SAE;
+                }
+                else if (token.is('r', 'z')) {
+                  if (opCount != 0 || (options & X86Inst::kOptionER))
+                    return kErrorInvalidState;
+                  options |= X86Inst::kOptionER | X86Inst::kOptionRZ_SAE;
+                }
               }
               else {
                 return kErrorInvalidState;

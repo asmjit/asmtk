@@ -103,7 +103,7 @@ if(NOT ASMTK_EMBED)
       asmtk_test_x86)
 
     foreach(_target ${ASMTK_TEST_SRC})
-      add_executable(${_target} ${ASMJIT_SRC} ${ASMTK_SRC} "${ASMTK_SOURCE_DIR}/test/${_target}.cpp")
+      add_executable(${_target} ${ASMJIT_SRC} ${ASMTK_SRC} "${ASMTK_DIR}/test/${_target}.cpp")
       target_link_libraries(${_target} ${ASMJIT_DEPS})
       target_include_directories(${_target} BEFORE PRIVATE ${ASMJIT_INCLUDE_DIR})
       set_target_properties(${_target} PROPERTIES LINK_FLAGS "${ASMJIT_PRIVATE_LFLAGS}")
