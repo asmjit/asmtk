@@ -41,7 +41,10 @@ int main(int argc, char* argv[]) {
   AsmParser p(&a);
 
   Error err = p.parse(asmData);
-  if (err) printf("ERROR: %0.8x (%s)\n", err, DebugUtils::errorAsString(err));
+  if (err) {
+    printf("ERROR: %0.8x (%s)\n", err, DebugUtils::errorAsString(err));
+    return 1;
+  }
 
-  return 1;
+  return 0;
 }

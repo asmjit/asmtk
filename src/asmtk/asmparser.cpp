@@ -449,7 +449,8 @@ Error AsmParser::parse(const char* input, size_t len) {
           tType = _tokenizer.next(&token);
 
           // Instruction without operands...
-          if (tType == AsmToken::kNL && opCount == 0) break;
+          if ((tType == AsmToken::kNL || tType == AsmToken::kEnd) && opCount == 0)
+            break;
 
           // Parse operand.
           ASMJIT_PROPAGATE(asmParseX86Operand(*this, opArray[opCount], &token));
