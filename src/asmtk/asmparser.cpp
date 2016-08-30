@@ -522,7 +522,7 @@ Error AsmParser::parse(const char* input, size_t len) {
             continue;
           }
 
-          if (tType == AsmToken::kNL)
+          if (tType == AsmToken::kNL || tType == AsmToken::kEnd)
             break;
 
           return kErrorInvalidState;
