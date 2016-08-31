@@ -3,7 +3,9 @@
 #include "./asmtk.h"
 
 static const char asmData[] =
+  "nop\n"
   "mov eax, ebx\n"
+  "MOV EAX, Ebx\n"
   "mov eax, 0xFFFFFFFF\n"
   "mov ax, fs\n"
   "mov fs, ax\n"

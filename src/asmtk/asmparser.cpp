@@ -58,13 +58,24 @@ AsmParser::~AsmParser() {}
 // [asmtk::AsmParser - Parse]
 // ============================================================================
 
+#define COMB_CHAR_2(a, b) \
+  ((uint32_t(a) << 8) | uint32_t(b))
+#define COMB_CHAR_4(a, b, c, d) \
+  ((uint32_t(a) << 24) | (uint32_t(b) << 16) | (uint32_t(c) << 8) | uint32_t(d))
+
+
 static bool asmParseX86Reg(Operand_& op, const uint8_t* s, size_t len) {
-  if (len < 2 || len > 5) return false;
+  enum {
+    kMinRegLen = 2,
+    kMaxRegLen = 5
+  };
+
+  if (len < kMinRegLen || len > kMaxRegLen) return false;
   const uint8_t* sEnd = s + len;
 
-  uint32_t c0 = s[0];
-  uint32_t c1 = s[1];
-  uint32_t c2 = len > 2 ? s[2] : uint8_t(0);
+  uint32_t c0 = Utils::toLower<uint32_t>(s[0]);
+  uint32_t c1 = Utils::toLower<uint32_t>(s[1]);
+  uint32_t c2 = len > 2 ? Utils::toLower<uint32_t>(s[2]) : uint32_t(0);
   uint32_t cn = (c0 << 8) + c1;
 
   uint32_t regType = X86Reg::kRegNone;
@@ -109,7 +120,6 @@ static bool asmParseX86Reg(Operand_& op, const uint8_t* s, size_t len) {
       goto TrySpBpSiDi;
     }
 
-#define COMB_CHAR_2(a, b) ((uint32_t(a) << 8) | uint32_t(b))
     if (c0 == 'e' || c0 == 'r') {
       cn = (c1 << 8) | c2;
 
@@ -129,7 +139,6 @@ TrySpBpSiDi:
       if (cn == COMB_CHAR_2('s', 'i')) { regId = X86Gp::kIdSi; goto Done; }
       if (cn == COMB_CHAR_2('d', 'i')) { regId = X86Gp::kIdDi; goto Done; }
     }
-#undef COMB_CHAR_2
   }
 
   // [R?|R?B|R?W|R?D]
@@ -138,7 +147,7 @@ TrySpBpSiDi:
     regType = X86Reg::kRegGpq;
 
     // Handle 'b', 'w', and 'd' suffixes.
-    c2 = sEnd[-1];
+    c2 = Utils::toLower<uint32_t>(sEnd[-1]);
     if (c2 == 'b')
       regType = X86Reg::kRegGpbLo;
     else if (c2 == 'w')
@@ -210,12 +219,64 @@ Done:
   return true;
 }
 
+static uint32_t asmParseX86Size(const uint8_t* s, size_t len) {
+  enum {
+    kMinSizeLen = 4,
+    kMaxSizeLen = 7
+  };
+
+  if (len < kMinSizeLen || len > kMaxSizeLen)
+    return 0;
+
+  // Start from the end.
+  uint32_t d = (Utils::toLower<uint32_t>(s[len - 4]) << 24) +
+               (Utils::toLower<uint32_t>(s[len - 3]) << 16) +
+               (Utils::toLower<uint32_t>(s[len - 2]) <<  8) +
+               (Utils::toLower<uint32_t>(s[len - 1]) <<  0) ;
+
+  if (d == COMB_CHAR_4('w', 'o', 'r', 'd')) {
+    // Parsed 'word'.
+    if (len == 4) return 2;
+
+    // Sizes of length '5':
+    d = (Utils::toLower<uint32_t>(s[0]) << 24);
+    if (len == 5) {
+      if (d == COMB_CHAR_4('d', 0, 0, 0)) return 4;
+      if (d == COMB_CHAR_4('q', 0, 0, 0)) return 8;
+      if (d == COMB_CHAR_4('t', 0, 0, 0)) return 10;
+      if (d == COMB_CHAR_4('o', 0, 0, 0)) return 16;
+    }
+
+    // Sizes of length '6':
+    d += (Utils::toLower<uint32_t>(s[0]) << 16);
+    if (len == 6) {
+      if (d == COMB_CHAR_4('m', 'm', 0, 0)) return 8;
+      if (d == COMB_CHAR_4('d', 'q', 0, 0)) return 16;
+      if (d == COMB_CHAR_4('q', 'q', 0, 0)) return 32;
+    }
+
+    // Sizes of length '7':
+    d += (Utils::toLower<uint32_t>(s[0]) << 8);
+    if (len == 7) {
+      if (d == COMB_CHAR_4('x', 'm', 'm', 0)) return 16;
+      if (d == COMB_CHAR_4('y', 'm', 'm', 0)) return 32;
+      if (d == COMB_CHAR_4('z', 'm', 'm', 0)) return 64;
+    }
+  }
+
+  // Parsed 'byte'.
+  if (d == COMB_CHAR_4('b', 'y', 't', 'e'))
+    return len == 4 ? 1 : 0;
+  else
+    return 0;
+}
+
 static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* name, size_t len) {
   Label L = parser._emitter->getLabelByName(reinterpret_cast<const char*>(name), len);
 
   if (!L.isValid()) {
     L = parser._emitter->newNamedLabel(reinterpret_cast<const char*>(name), len);
-    if (!L.isValid()) return kErrorNoHeapMemory;
+    if (!L.isValid()) return DebugUtils::errored(kErrorNoHeapMemory);
   }
 
   dst = L;
@@ -224,27 +285,64 @@ static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* na
 
 static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* token) {
   uint32_t type = token->type;
+  uint32_t memSize = 0;
   Operand seg;
 
-  // Register or label - parse a symbol, which could be a register or label reference.
+  // Symbol, could be register, memory operand size, or label.
   if (type == AsmToken::kSym) {
+    // Try register.
     if (asmParseX86Reg(dst, token->data, token->len)) {
+      if (!dst.as<X86Reg>().isSeg())
+        return kErrorOk;
+
       // A segment register followed by a colon (':') describes a segment of a
       // memory operand - in such case we store the segment and jump to MemOp.
-      if (static_cast<X86Reg&>(dst).isSeg()) {
-        AsmToken tTmp;
-        if (parser._tokenizer.next(token) == AsmToken::kColon &&
-            parser._tokenizer.next(&tTmp) == AsmToken::kLBracket) {
-          seg = dst;
-          goto MemOp;
-        }
-        parser._tokenizer.back(token);
+      AsmToken tTmp;
+      if (parser._tokenizer.next(token) == AsmToken::kColon &&
+          parser._tokenizer.next(&tTmp) == AsmToken::kLBracket) {
+        seg = dst;
+        goto MemOp;
       }
-      return kErrorOk;
+      parser._tokenizer.back(token);
     }
-    else {
-      return asmHandleSymbol(parser, dst, token->data, token->len);
+
+    // Try memory size specifier.
+    memSize = asmParseX86Size(token->data, token->len);
+    if (memSize) {
+      type = parser._tokenizer.next(token);
+
+      // The specifier may be followed by 'ptr', skip it in such case.
+      if (type == AsmToken::kSym &&
+          token->len == 3 &&
+          Utils::toLower<uint32_t>(token->data[0]) == 'p' &&
+          Utils::toLower<uint32_t>(token->data[1]) == 't' &&
+          Utils::toLower<uint32_t>(token->data[2]) == 'r') {
+        type = parser._tokenizer.next(token);
+      }
+
+      // Jump to memory operand if we encountered '['.
+      if (type == AsmToken::kLBracket)
+        goto MemOp;
+
+      // Parse segment prefix otherwise.
+      if (type == AsmToken::kSym) {
+        // Segment register.
+        if (!asmParseX86Reg(seg, token->data, token->len) || !seg.as<X86Reg>().isSeg())
+          return DebugUtils::errored(kErrorInvalidAddress);
+
+        type = parser._tokenizer.next(token);
+        if (type != AsmToken::kColon)
+          return DebugUtils::errored(kErrorInvalidAddress);
+
+        if (type == AsmToken::kLBracket)
+          goto MemOp;
+      }
+
+      return DebugUtils::errored(kErrorInvalidAddress);
     }
+
+    // Must be label/symbol.
+    return asmHandleSymbol(parser, dst, token->data, token->len);
   }
 
   // Memory address - parse opening '['.
@@ -261,7 +359,7 @@ MemOp:
 
     if (type == AsmToken::kSym) {
       if (!asmParseX86Reg(base, token->data, token->len))
-        return kErrorInvalidAddress;
+        return DebugUtils::errored(kErrorInvalidAddress);
 
       opType = parser._tokenizer.next(token);
       if (opType == AsmToken::kMul) {
@@ -273,14 +371,14 @@ MemOp:
         type = parser._tokenizer.next(token);
         if (type == AsmToken::kSym) {
           if (!asmParseX86Reg(index, token->data, token->len))
-            return kErrorInvalidAddress;
+            return DebugUtils::errored(kErrorInvalidAddress);
 
           opType = parser._tokenizer.next(token);
           if (opType == AsmToken::kMul) {
 MemMul:
             type = parser._tokenizer.next(token);
             if (type != AsmToken::kU64)
-              return kErrorInvalidAddress;
+              return DebugUtils::errored(kErrorInvalidAddress);
 
             switch (token->u64) {
               case 1: shift = 0; break;
@@ -288,7 +386,7 @@ MemMul:
               case 4: shift = 2; break;
               case 8: shift = 3; break;
               default:
-                return kErrorInvalidAddress;
+                return DebugUtils::errored(kErrorInvalidAddress);
             }
             opType = parser._tokenizer.next(token);
           }
@@ -298,14 +396,14 @@ MemMul:
           opType = parser._tokenizer.next(token);
         }
         else {
-          return kErrorInvalidAddress;
+          return DebugUtils::errored(kErrorInvalidAddress);
         }
       }
       else if (opType == AsmToken::kSub) {
         goto MemDisp;
       }
       else if (opType != AsmToken::kRBracket) {
-        return kErrorInvalidAddress;
+        return DebugUtils::errored(kErrorInvalidAddress);
       }
     }
     else if (type == AsmToken::kAdd || type == AsmToken::kSub) {
@@ -316,39 +414,39 @@ MemMul:
       opType = parser._tokenizer.next(token);
     }
     else {
-      return kErrorInvalidAddress;
+      return DebugUtils::errored(kErrorInvalidAddress);
     }
 
     for (;;) {
       // Parse closing ']'.
       if (opType == AsmToken::kRBracket) {
         if (!Utils::isInt32<int64_t>(static_cast<int32_t>(disp)))
-          return kErrorInvalidAddress;
+          return DebugUtils::errored(kErrorInvalidAddress);
 
         int32_t disp32 = static_cast<int32_t>(static_cast<int64_t>(disp));
         if (base.isReg() && !index.isReg())
-          dst = x86::ptr(static_cast<X86Gp&>(base), disp32);
+          dst = x86::ptr(base.as<X86Gp>(), disp32);
         else if (base.isReg() && index.isReg())
-          dst = x86::ptr(static_cast<X86Gp&>(base), static_cast<X86Gp&>(index), shift, disp32);
+          dst = x86::ptr(base.as<X86Gp>(), index.as<X86Gp>(), shift, disp32);
         else if (!base.isReg() && index.isReg())
-          dst = x86::ptr(uint64_t(disp32), static_cast<X86Gp&>(index), shift);
+          dst = x86::ptr(uint64_t(disp32), index.as<X86Gp>(), shift);
         else
           dst = x86::ptr(uint64_t(disp32));
 
-        if (seg.isReg())
-          static_cast<X86Mem&>(dst).setSegment(static_cast<const X86Seg&>(seg));
+        dst.as<X86Mem>().setSize(memSize);
+        if (seg.isReg()) dst.as<X86Mem>().setSegment(seg.as<X86Seg>());
 
         return kErrorOk;
       }
 
       // Displacement.
       if (opType != AsmToken::kAdd && opType != AsmToken::kSub)
-        return kErrorInvalidAddress;
+        return DebugUtils::errored(kErrorInvalidAddress);
 
 MemDisp:
       type = parser._tokenizer.next(token);
       if (type != AsmToken::kU64)
-        return kErrorInvalidAddress;
+        return DebugUtils::errored(kErrorInvalidAddress);
 
       if (opType == AsmToken::kAdd)
         disp += token->u64;
@@ -364,49 +462,78 @@ MemDisp:
     bool negative = (type == AsmToken::kSub);
     if (negative) {
       type = parser._tokenizer.next(token);
-      if (type != AsmToken::kU64) return kErrorInvalidState;
+      if (type != AsmToken::kU64)
+        return DebugUtils::errored(kErrorInvalidState);
     }
 
     dst = imm(negative ? -token->i64 : token->i64);
     return kErrorOk;
   }
 
-  return kErrorInvalidState;
+  return DebugUtils::errored(kErrorInvalidState);
+}
+
+static uint32_t asmParseX86InstOption(const uint8_t* s, size_t len) {
+  enum {
+    kMinOptionLen = 3,
+    kMaxOptionLen = 5
+  };
+
+  if (!(len >= kMinOptionLen && len <= kMaxOptionLen))
+    return 0;
+
+  uint32_t d0 = (Utils::toLower<uint32_t>(s[0]) << 24) +
+                (Utils::toLower<uint32_t>(s[1]) << 16) +
+                (Utils::toLower<uint32_t>(s[2]) <<  8) ;
+
+  // Options of length '3':
+  if (len == 3) {
+    if (d0 == COMB_CHAR_4('r', 'e', 'x', 0)) return X86Inst::kOptionRex;
+    return 0;
+  }
+
+  // Options of length '4':
+  d0 += Utils::toLower<uint32_t>(s[3]);
+  if (len == 4) {
+    if (d0 == COMB_CHAR_4('l', 'o', 'n', 'g')) return X86Inst::kOptionLongForm;
+    return 0;
+  }
+
+  // Options of length '5':
+  if (len == 5) {
+    uint32_t d1 = Utils::toLower<uint32_t>(s[4]) << 24;
+
+    if (d0 == COMB_CHAR_4('s', 'h', 'o', 'r') &&
+        d1 == COMB_CHAR_4('t',  0 ,  0 ,  0 )) return X86Inst::kOptionLongForm;
+
+    if (d0 == COMB_CHAR_4('m', 'o', 'd', 'm') &&
+        d1 == COMB_CHAR_4('r',  0 ,  0 ,  0 )) return X86Inst::kOptionModMR;
+    return 0;
+  }
+
+  // Should be unreachable.
+  return 0;
 }
 
 static Error asmParseX86Instruction(AsmParser& parser, uint32_t& instId, uint32_t& options, AsmToken* token) {
   for (;;) {
     // First try to match the instruction as instruction options are unlikely.
     instId = X86Inst::getIdByName(reinterpret_cast<const char*>(token->data), token->len);
-    if (instId != kInvalidInst) return kErrorOk;
+    if (instId != kInvalidInst)
+      return kErrorOk;
 
     // Okay, maybe it's an option?
-    if (token->is('s', 'h', 'o', 'r', 't')) {
-      if (options & X86Inst::kOptionShortForm)
-        return kErrorInvalidInstruction;
-      options |= X86Inst::kOptionShortForm;
-    }
-    else if (token->is('l', 'o', 'n', 'g')) {
-      if (options & X86Inst::kOptionLongForm)
-        return kErrorInvalidInstruction;
-      options |= X86Inst::kOptionLongForm;
-    }
-    else if (token->is('r', 'e', 'x')) {
-      if (options & X86Inst::kOptionRex)
-        return kErrorInvalidInstruction;
-      options |= X86Inst::kOptionRex;
-    }
-    else if (token->is('m', 'o', 'd', 'm', 'r')) {
-      if (options & X86Inst::kOptionModMR)
-        return kErrorInvalidInstruction;
-      options |= X86Inst::kOptionModMR;
-    }
-    else {
-      return kErrorInvalidInstruction;
-    }
+    uint32_t option = asmParseX86InstOption(token->data, token->len);
+    if (!(option))
+      return DebugUtils::errored(kErrorInvalidInstruction);
+
+    // Refuse to parse the same option specified multiple times.
+    if (ASMJIT_UNLIKELY(options & option))
+      return DebugUtils::errored(kErrorInvalidInstruction);
+    options |= option;
 
     if (parser._tokenizer.next(token) != AsmToken::kSym)
-      return kErrorInvalidInstruction;
+      return DebugUtils::errored(kErrorInvalidInstruction);
   }
 }
 
@@ -461,55 +588,56 @@ Error AsmParser::parse(const char* input, size_t len) {
             do {
               tType = _tokenizer.next(&token);
               if (tType == AsmToken::kSym || tType == AsmToken::kNSym) {
+                // TODO: Only accepts lowercase, must be fixed.
                 if (token.len == 2 && token.data[0] == 'k' && (uint8_t)(token.data[1] - '0') < 8) {
                   if (opCount != 0 || !opExtra.isNone())
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   opExtra = X86KReg(token.data[1] - '0');
                   options |= X86Inst::kOptionK;
                 }
                 else if (token.is('z')) {
                   if (opCount != 0 || (options & X86Inst::kOptionKZ))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOptionKZ;
                 }
                 else if (token.is('1', 't', 'o', 'x')) {
                   if (!opArray[opCount].isMem() || (options & X86Inst::kOption1ToX))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOption1ToX;
                 }
                 else if (token.is('s', 'a', 'e')) {
                   if (opCount != 0 || (options & X86Inst::kOptionSAE))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOptionSAE;
                 }
                 else if (token.is('r', 'n')) {
                   if (opCount != 0 || (options & X86Inst::kOptionER))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOptionER | X86Inst::kOptionRN_SAE;
                 }
                 else if (token.is('r', 'd')) {
                   if (opCount != 0 || (options & X86Inst::kOptionER))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOptionER | X86Inst::kOptionRD_SAE;
                 }
                 else if (token.is('r', 'u')) {
                   if (opCount != 0 || (options & X86Inst::kOptionER))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOptionER | X86Inst::kOptionRU_SAE;
                 }
                 else if (token.is('r', 'z')) {
                   if (opCount != 0 || (options & X86Inst::kOptionER))
-                    return kErrorInvalidState;
+                    return DebugUtils::errored(kErrorInvalidState);
                   options |= X86Inst::kOptionER | X86Inst::kOptionRZ_SAE;
                 }
               }
               else {
-                return kErrorInvalidState;
+                return DebugUtils::errored(kErrorInvalidState);
               }
 
               tType = _tokenizer.next(&token);
               if (tType != AsmToken::kRCurl)
-                return kErrorInvalidState;
+                return DebugUtils::errored(kErrorInvalidState);
 
               tType = _tokenizer.next(&token);
             } while (tType == AsmToken::kLCurl);
@@ -518,14 +646,14 @@ Error AsmParser::parse(const char* input, size_t len) {
           opCount++;
           if (tType == AsmToken::kComma) {
             if (opCount == ASMJIT_ARRAY_SIZE(opArray))
-              return kErrorInvalidState;
+              return DebugUtils::errored(kErrorInvalidState);
             continue;
           }
 
           if (tType == AsmToken::kNL || tType == AsmToken::kEnd)
             break;
 
-          return kErrorInvalidState;
+          return DebugUtils::errored(kErrorInvalidState);
         }
 
         ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
@@ -545,7 +673,7 @@ Error AsmParser::parse(const char* input, size_t len) {
     if (tType == AsmToken::kEnd)
       break;
 
-    return kErrorInvalidState;
+    return DebugUtils::errored(kErrorInvalidState);
   }
 
   return kErrorOk;
