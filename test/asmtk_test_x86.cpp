@@ -25,6 +25,7 @@ static const char asmData[] =
   "vaddpd zmm0 {k1}{z}, zmm1, [rax] {1tox}\n"
   "test eax, eax\n"
   "jz L1\n"
+  "jecxz ecx, L1\n"
   "L1:\n"
   ;
 
@@ -44,7 +45,7 @@ int main(int argc, char* argv[]) {
 
   Error err = p.parse(asmData);
   if (err) {
-    printf("ERROR: %0.8x (%s)\n", err, DebugUtils::errorAsString(err));
+    printf("ERROR: %08x (%s)\n", err, DebugUtils::errorAsString(err));
     return 1;
   }
 

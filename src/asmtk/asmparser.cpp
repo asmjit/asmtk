@@ -304,6 +304,7 @@ static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* toke
         goto MemOp;
       }
       parser._tokenizer.back(token);
+      return kErrorOk;
     }
 
     // Try memory size specifier.

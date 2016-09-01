@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 
   // Error handling (use asmjit::ErrorHandler for more robust error handling).
   if (err) {
-    printf("ERROR: %0.8x (%s)\n", err, DebugUtils::errorAsString(err));
+    printf("ERROR: %08x (%s)\n", err, DebugUtils::errorAsString(err));
     return 1;
   }
 
