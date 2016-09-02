@@ -335,6 +335,7 @@ static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* toke
         if (type != AsmToken::kColon)
           return DebugUtils::errored(kErrorInvalidAddress);
 
+        type = parser._tokenizer.next(token);
         if (type == AsmToken::kLBracket)
           goto MemOp;
       }
