@@ -41,8 +41,8 @@ static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegZmm         , X86Reg::kKindVec , 64, 32 ),
   DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
   DEFINE_REG(Operand::kOpReg , X86Reg::kRegBnd         , X86Reg::kKindBnd , 16, 4  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegCr          , X86Reg::kKindCr  , 8 , 9  ),
-  DEFINE_REG(Operand::kOpReg , X86Reg::kRegDr          , X86Reg::kKindDr  , 8 , 8  )
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegCr          , X86Reg::kKindCr  , 8 , 16 ),
+  DEFINE_REG(Operand::kOpReg , X86Reg::kRegDr          , X86Reg::kKindDr  , 8 , 16 )
 };
 #undef DEFINE_REG
 
@@ -60,11 +60,11 @@ AsmParser::~AsmParser() {}
 
 #define COMB_CHAR_2(a, b) \
   ((uint32_t(a) << 8) | uint32_t(b))
+
 #define COMB_CHAR_4(a, b, c, d) \
   ((uint32_t(a) << 24) | (uint32_t(b) << 16) | (uint32_t(c) << 8) | uint32_t(d))
 
-
-static bool asmParseX86Reg(Operand_& op, const uint8_t* s, size_t len) {
+static bool x86ParseRegister(Operand_& op, const uint8_t* s, size_t len) {
   enum {
     kMinRegLen = 2,
     kMaxRegLen = 5
@@ -219,7 +219,7 @@ Done:
   return true;
 }
 
-static uint32_t asmParseX86Size(const uint8_t* s, size_t len) {
+static uint32_t x86ParseSize(const uint8_t* s, size_t len) {
   enum {
     kMinSizeLen = 4,
     kMaxSizeLen = 7
@@ -283,7 +283,7 @@ static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* na
   return kErrorOk;
 }
 
-static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* token) {
+static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) {
   uint32_t type = token->type;
   uint32_t memSize = 0;
   Operand seg;
@@ -291,7 +291,7 @@ static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* toke
   // Symbol, could be register, memory operand size, or label.
   if (type == AsmToken::kSym) {
     // Try register.
-    if (asmParseX86Reg(dst, token->data, token->len)) {
+    if (x86ParseRegister(dst, token->data, token->len)) {
       if (!dst.as<X86Reg>().isSeg())
         return kErrorOk;
 
@@ -308,7 +308,7 @@ static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* toke
     }
 
     // Try memory size specifier.
-    memSize = asmParseX86Size(token->data, token->len);
+    memSize = x86ParseSize(token->data, token->len);
     if (memSize) {
       type = parser._tokenizer.next(token);
 
@@ -328,7 +328,7 @@ static Error asmParseX86Operand(AsmParser& parser, Operand_& dst, AsmToken* toke
       // Parse segment prefix otherwise.
       if (type == AsmToken::kSym) {
         // Segment register.
-        if (!asmParseX86Reg(seg, token->data, token->len) || !seg.as<X86Reg>().isSeg())
+        if (!x86ParseRegister(seg, token->data, token->len) || !seg.as<X86Reg>().isSeg())
           return DebugUtils::errored(kErrorInvalidAddress);
 
         type = parser._tokenizer.next(token);
@@ -360,7 +360,7 @@ MemOp:
     type = parser._tokenizer.next(token);
 
     if (type == AsmToken::kSym) {
-      if (!asmParseX86Reg(base, token->data, token->len))
+      if (!x86ParseRegister(base, token->data, token->len))
         return DebugUtils::errored(kErrorInvalidAddress);
 
       opType = parser._tokenizer.next(token);
@@ -372,7 +372,7 @@ MemOp:
       else if (opType == AsmToken::kAdd) {
         type = parser._tokenizer.next(token);
         if (type == AsmToken::kSym) {
-          if (!asmParseX86Reg(index, token->data, token->len))
+          if (!x86ParseRegister(index, token->data, token->len))
             return DebugUtils::errored(kErrorInvalidAddress);
 
           opType = parser._tokenizer.next(token);
@@ -475,7 +475,7 @@ MemDisp:
   return DebugUtils::errored(kErrorInvalidState);
 }
 
-static uint32_t asmParseX86InstOption(const uint8_t* s, size_t len) {
+static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
   enum {
     kMinOptionLen = 3,
     kMaxOptionLen = 5
@@ -517,7 +517,7 @@ static uint32_t asmParseX86InstOption(const uint8_t* s, size_t len) {
   return 0;
 }
 
-static Error asmParseX86Instruction(AsmParser& parser, uint32_t& instId, uint32_t& options, AsmToken* token) {
+static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, AsmToken* token) {
   for (;;) {
     // First try to match the instruction as instruction options are unlikely.
     instId = X86Inst::getIdByName(reinterpret_cast<const char*>(token->data), token->len);
@@ -525,7 +525,7 @@ static Error asmParseX86Instruction(AsmParser& parser, uint32_t& instId, uint32_
       return kErrorOk;
 
     // Okay, maybe it's an option?
-    uint32_t option = asmParseX86InstOption(token->data, token->len);
+    uint32_t option = x86ParseOption(token->data, token->len);
     if (!(option))
       return DebugUtils::errored(kErrorInvalidInstruction);
 
@@ -539,12 +539,36 @@ static Error asmParseX86Instruction(AsmParser& parser, uint32_t& instId, uint32_
   }
 }
 
+static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& opExtra, Operand_* opArray, uint32_t opCount) {
+  for (uint32_t i = 0; i < opCount; i++) {
+    Operand_& op = opArray[i];
+
+    // If the parsed memory segment is the default one, remove it. AsmJit
+    // always emits segment override if the segment is specified, this is
+    // good on AsmJit side, but causes problems here as it's not necessary
+    // to emit 'ds:' everywhere if the input contains it (and it's common).
+    if (op.isMem() && op.as<X86Mem>().hasSegment()) {
+      X86Mem& mem = op.as<X86Mem>();
+      uint32_t defaultSeg = X86Seg::kIdDs;
+
+      if (mem.hasBaseReg()) {
+        if (mem.getBaseId() == X86Gp::kIdSp || mem.getBaseId() == X86Gp::kIdBp)
+          defaultSeg = X86Seg::kIdSs;
+      }
+
+      if (mem.getSegmentId() == defaultSeg)
+        mem.resetSegment();
+    }
+  }
+}
+
 Error AsmParser::parse(const char* input, size_t len) {
   if (len == kInvalidIndex) len = ::strlen(input);
   if (len == 0) return kErrorOk;
-  _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
 
   uint32_t archType = _emitter->getArchType();
+  _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
+
   for (;;) {
     AsmToken token;
     uint32_t tType = _tokenizer.next(&token);
@@ -567,10 +591,10 @@ Error AsmParser::parse(const char* input, size_t len) {
 
         uint32_t instId = 0;
         uint32_t options = 0;
-        ASMJIT_PROPAGATE(asmParseX86Instruction(*this, instId, options, &token));
+        ASMJIT_PROPAGATE(x86ParseInstruction(*this, instId, options, &token));
 
         Operand opExtra;
-        Operand opArray[6];
+        Operand_ opArray[6];
         uint32_t opCount = 0;
 
         // Parse operands.
@@ -582,7 +606,7 @@ Error AsmParser::parse(const char* input, size_t len) {
             break;
 
           // Parse operand.
-          ASMJIT_PROPAGATE(asmParseX86Operand(*this, opArray[opCount], &token));
+          ASMJIT_PROPAGATE(x86ParseOperand(*this, opArray[opCount], &token));
 
           // Parse {} options introduced by AVX-512.
           tType = _tokenizer.next(&token);
@@ -658,9 +682,13 @@ Error AsmParser::parse(const char* input, size_t len) {
           return DebugUtils::errored(kErrorInvalidState);
         }
 
-        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
-        _emitter->setOptions(options);
+        for (uint32_t i = opCount; i < 4; i++)
+          opArray[i].reset();
 
+        x86FixupInstruction(*this, instId, options, opExtra, opArray, opCount);
+        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
+
+        _emitter->setOptions(options);
         if (opExtra.isReg()) _emitter->setOpExtra(opExtra);
         if (opCount > 4) _emitter->setOp4(opArray[4]);
         if (opCount > 5) _emitter->setOp5(opArray[5]);
