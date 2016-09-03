@@ -793,7 +793,7 @@ Error AsmParser::parse(const char* input, size_t len) {
                   if (opCount != 0 || !opExtra.isNone())
                     return DebugUtils::errored(kErrorInvalidState);
                   opExtra = X86KReg(token.data[1] - '0');
-                  options |= X86Inst::kOptionK;
+                  options |= X86Inst::kOptionOpExtra;
                 }
                 else if (token.is('z')) {
                   if (opCount != 0 || (options & X86Inst::kOptionKZ))
