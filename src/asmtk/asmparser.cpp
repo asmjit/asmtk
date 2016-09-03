@@ -46,17 +46,50 @@ static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
 };
 #undef DEFINE_REG
 
+enum X86Alias {
+  kX86AliasStart = 0x00010000U,
+
+  kX86AliasCmpsb = kX86AliasStart,
+  kX86AliasCmpsd,
+  kX86AliasCmpsq,
+  kX86AliasCmpsw,
+
+  kX86AliasMovsb,
+  kX86AliasMovsd,
+  kX86AliasMovsq,
+  kX86AliasMovsw,
+
+  kX86AliasLodsb,
+  kX86AliasLodsd,
+  kX86AliasLodsq,
+  kX86AliasLodsw,
+
+  kX86AliasScasb,
+  kX86AliasScasd,
+  kX86AliasScasq,
+  kX86AliasScasw,
+
+  kX86AliasStosb,
+  kX86AliasStosd,
+  kX86AliasStosq,
+  kX86AliasStosw
+};
+
 // ============================================================================
 // [asmtk::AsmParser]
 // ============================================================================
 
-AsmParser::AsmParser(CodeEmitter* emitter)
-  : _emitter(emitter) {}
+AsmParser::AsmParser(CodeEmitter* emitter) : _emitter(emitter) {}
 AsmParser::~AsmParser() {}
 
 // ============================================================================
 // [asmtk::AsmParser - Parse]
 // ============================================================================
+
+static void strToLower(uint8_t* dst, const uint8_t* src, size_t len) {
+  for (size_t i = 0; i < len; i++)
+    dst[i] = Utils::toLower<uint8_t>(static_cast<uint8_t>(src[i]));
+}
 
 #define COMB_CHAR_2(a, b) \
   ((uint32_t(a) << 8) | uint32_t(b))
@@ -481,32 +514,41 @@ static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
     kMaxOptionLen = 5
   };
 
-  if (!(len >= kMinOptionLen && len <= kMaxOptionLen))
+  if (len < kMinOptionLen || len > kMaxOptionLen)
     return 0;
 
-  uint32_t d0 = (Utils::toLower<uint32_t>(s[0]) << 24) +
-                (Utils::toLower<uint32_t>(s[1]) << 16) +
-                (Utils::toLower<uint32_t>(s[2]) <<  8) ;
+  uint32_t d0 = (static_cast<uint32_t>(s[0]) << 24) +
+                (static_cast<uint32_t>(s[1]) << 16) +
+                (static_cast<uint32_t>(s[2]) <<  8) ;
 
   // Options of length '3':
   if (len == 3) {
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 0)) return X86Inst::kOptionRep;
     if (d0 == COMB_CHAR_4('r', 'e', 'x', 0)) return X86Inst::kOptionRex;
     return 0;
   }
 
   // Options of length '4':
-  d0 += Utils::toLower<uint32_t>(s[3]);
+  d0 += static_cast<uint32_t>(s[3]);
   if (len == 4) {
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'z')) return X86Inst::kOptionRep;
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'e')) return X86Inst::kOptionRep;
     if (d0 == COMB_CHAR_4('l', 'o', 'n', 'g')) return X86Inst::kOptionLongForm;
     return 0;
   }
 
   // Options of length '5':
   if (len == 5) {
-    uint32_t d1 = Utils::toLower<uint32_t>(s[4]) << 24;
+    uint32_t d1 = static_cast<uint32_t>(s[4]) << 24;
+
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'n') &&
+        d1 == COMB_CHAR_4('z', 0, 0, 0)) return X86Inst::kOptionRepnz;
+
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'n') &&
+        d1 == COMB_CHAR_4('e', 0, 0, 0)) return X86Inst::kOptionRepnz;
 
     if (d0 == COMB_CHAR_4('s', 'h', 'o', 'r') &&
-        d1 == COMB_CHAR_4('t',  0 ,  0 ,  0 )) return X86Inst::kOptionLongForm;
+        d1 == COMB_CHAR_4('t',  0 ,  0 ,  0 )) return X86Inst::kOptionShortForm;
 
     if (d0 == COMB_CHAR_4('m', 'o', 'd', 'm') &&
         d1 == COMB_CHAR_4('r',  0 ,  0 ,  0 )) return X86Inst::kOptionModMR;
@@ -517,15 +559,71 @@ static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
   return 0;
 }
 
+static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
+  if (len < 3)
+    return kInvalidInst;
+
+  uint32_t d0 = (static_cast<uint32_t>(s[0]) << 24) +
+                (static_cast<uint32_t>(s[1]) << 16) +
+                (static_cast<uint32_t>(s[2]) <<  8) ;
+  if (len == 3) {
+    if (d0 == COMB_CHAR_4('s', 'a', 'l', 0)) return X86Inst::kIdShl;
+    return kInvalidInst;
+  }
+
+  d0 += (static_cast<uint32_t>(s[3]) << 0);
+  if (len == 4) {
+    return kInvalidInst;
+  }
+
+  uint32_t d1 = (static_cast<uint32_t>(s[4]) << 24);
+  if (len == 5) {
+    uint32_t base = 0;
+
+    if (d0 == COMB_CHAR_4('c', 'm', 'p', 's'))
+      base = kX86AliasCmpsb;
+    else if (d0 == COMB_CHAR_4('l', 'o', 'd', 's'))
+      base = kX86AliasLodsb;
+    else if (d0 == COMB_CHAR_4('m', 'o', 'v', 's'))
+      base = kX86AliasMovsb;
+    else if (d0 == COMB_CHAR_4('s', 'c', 'a', 's'))
+      base = kX86AliasScasb;
+    else if (d0 == COMB_CHAR_4('s', 't', 'o', 's'))
+      base = kX86AliasStosb;
+    else
+      return base;
+
+    if (d1 == COMB_CHAR_4('b', 0, 0, 0)) return base + 0;
+    if (d1 == COMB_CHAR_4('d', 0, 0, 0)) return base + 1;
+    if (d1 == COMB_CHAR_4('q', 0, 0, 0)) return base + 2;
+    if (d1 == COMB_CHAR_4('w', 0, 0, 0)) return base + 3;
+
+    return kInvalidInst;
+  }
+
+  return kInvalidInst;
+}
+
 static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, AsmToken* token) {
   for (;;) {
-    // First try to match the instruction as instruction options are unlikely.
-    instId = X86Inst::getIdByName(reinterpret_cast<const char*>(token->data), token->len);
-    if (instId != kInvalidInst)
-      return kErrorOk;
+    size_t len = token->len;
+    uint8_t lower[32];
 
-    // Okay, maybe it's an option?
-    uint32_t option = x86ParseOption(token->data, token->len);
+    if (len > ASMJIT_ARRAY_SIZE(lower))
+      return DebugUtils::errored(kErrorInvalidInstruction);
+
+    strToLower(lower, token->data, len);
+
+    // First try to match alias, as there are some tricky aliases.
+    instId = x86ParseAlias(lower, len);
+    if (instId != kInvalidInst) return kErrorOk;
+
+    // Secondly, match any instruction as defined by AsmJit.
+    instId = X86Inst::getIdByName(reinterpret_cast<char*>(lower), len);
+    if (instId != kInvalidInst) return kErrorOk;
+
+    // Maybe it's instruction option?
+    uint32_t option = x86ParseOption(lower, len);
     if (!(option))
       return DebugUtils::errored(kErrorInvalidInstruction);
 
@@ -539,18 +637,94 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
   }
 }
 
-static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& opExtra, Operand_* opArray, uint32_t opCount) {
-  for (uint32_t i = 0; i < opCount; i++) {
+static void x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& opExtra, Operand_* opArray, uint32_t& opCount) {
+  uint32_t i;
+
+  if (instId >= kX86AliasStart) {
+    X86Emitter* emitter = static_cast<X86Emitter*>(parser._emitter);
+    uint32_t memSize = 0;
+    bool isStr = false;
+
+    switch (instId) {
+      case kX86AliasCmpsb: memSize = 1; instId = X86Inst::kIdCmps; isStr = true; break;
+      case kX86AliasCmpsd: memSize = 4;
+        isStr = opCount == 0 || (opCount == 2 && opArray[0].isMem() && opArray[1].isMem());
+        instId = isStr ? X86Inst::kIdCmps : X86Inst::kIdCmpsd;
+        break;
+      case kX86AliasCmpsq: memSize = 8; instId = X86Inst::kIdCmps; isStr = true; break;
+      case kX86AliasCmpsw: memSize = 2; instId = X86Inst::kIdCmps; isStr = true; break;
+
+      case kX86AliasMovsb: memSize = 1; instId = X86Inst::kIdMovs; isStr = true; break;
+      case kX86AliasMovsd: memSize = 4;
+        isStr = opCount == 0 || (opCount == 2 && opArray[0].isMem() && opArray[1].isMem());
+        instId = isStr ? X86Inst::kIdMovs : X86Inst::kIdMovsd;
+        break;
+      case kX86AliasMovsq: memSize = 8; instId = X86Inst::kIdMovs; isStr = true; break;
+      case kX86AliasMovsw: memSize = 2; instId = X86Inst::kIdMovs; isStr = true; break;
+
+      case kX86AliasLodsb: memSize = 1; instId = X86Inst::kIdLods; isStr = true; break;
+      case kX86AliasLodsd: memSize = 4; instId = X86Inst::kIdLods; isStr = true; break;
+      case kX86AliasLodsq: memSize = 8; instId = X86Inst::kIdLods; isStr = true; break;
+      case kX86AliasLodsw: memSize = 2; instId = X86Inst::kIdLods; isStr = true; break;
+
+      case kX86AliasScasb: memSize = 1; instId = X86Inst::kIdScas; isStr = true; break;
+      case kX86AliasScasd: memSize = 4; instId = X86Inst::kIdScas; isStr = true; break;
+      case kX86AliasScasq: memSize = 8; instId = X86Inst::kIdScas; isStr = true; break;
+      case kX86AliasScasw: memSize = 2; instId = X86Inst::kIdScas; isStr = true; break;
+
+      case kX86AliasStosb: memSize = 1; instId = X86Inst::kIdStos; isStr = true; break;
+      case kX86AliasStosd: memSize = 4; instId = X86Inst::kIdStos; isStr = true; break;
+      case kX86AliasStosq: memSize = 8; instId = X86Inst::kIdStos; isStr = true; break;
+      case kX86AliasStosw: memSize = 2; instId = X86Inst::kIdStos; isStr = true; break;
+        break;
+    }
+
+    if (isStr) {
+      if (opCount == 0) {
+        uint32_t sign = memSize == 1 ? X86Reg::signatureOf<X86Reg::kRegGpbLo>() :
+                        memSize == 2 ? X86Reg::signatureOf<X86Reg::kRegGpw>() :
+                        memSize == 4 ? X86Reg::signatureOf<X86Reg::kRegGpd>() :
+                                       X86Reg::signatureOf<X86Reg::kRegGpq>() ;
+
+        // String instructions aliases.
+        opCount = 2;
+        switch (instId) {
+          case X86Inst::kIdCmps: opArray[0] = emitter->ptr_zsi(); opArray[1] = emitter->ptr_zdi(); break;
+          case X86Inst::kIdMovs: opArray[0] = emitter->ptr_zdi(); opArray[1] = emitter->ptr_zsi(); break;
+          case X86Inst::kIdLods:
+          case X86Inst::kIdScas: opArray[0] = Reg::fromSignature(sign, X86Gp::kIdAx); opArray[1] = emitter->ptr_zdi(); break;
+          case X86Inst::kIdStos: opArray[0] = emitter->ptr_zdi(); opArray[1] = Reg::fromSignature(sign, X86Gp::kIdAx); break;
+        }
+      }
+
+      for (i = 0; i < opCount; i++) {
+        if (opArray[i].isMem()) {
+          X86Mem& mem = opArray[i].as<X86Mem>();
+
+          if (mem.getSize() == 0)
+            mem.setSize(memSize);
+
+          if (mem.getBaseId() == X86Gp::kIdDi && mem.getSegmentId() == X86Seg::kIdEs)
+            mem.resetSegment();
+        }
+      }
+    }
+  }
+
+  for (i = 0; i < opCount; i++) {
     Operand_& op = opArray[i];
 
     // If the parsed memory segment is the default one, remove it. AsmJit
-    // always emits segment override if the segment is specified, this is
+    // always emits segment-override if the segment is specified, this is
     // good on AsmJit side, but causes problems here as it's not necessary
     // to emit 'ds:' everywhere if the input contains it (and it's common).
     if (op.isMem() && op.as<X86Mem>().hasSegment()) {
       X86Mem& mem = op.as<X86Mem>();
+
+      // Default to `ds` segment for most instructions.
       uint32_t defaultSeg = X86Seg::kIdDs;
 
+      // Default to `ss` segment if the operand has esp|rsp or ebp|rbp base.
       if (mem.hasBaseReg()) {
         if (mem.getBaseId() == X86Gp::kIdSp || mem.getBaseId() == X86Gp::kIdBp)
           defaultSeg = X86Seg::kIdSs;
@@ -689,7 +863,7 @@ Error AsmParser::parse(const char* input, size_t len) {
         ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
 
         _emitter->setOptions(options);
-        if (opExtra.isReg()) _emitter->setOpExtra(opExtra);
+        if (!opExtra.isNone()) _emitter->setOpExtra(opExtra);
         if (opCount > 4) _emitter->setOp4(opArray[4]);
         if (opCount > 5) _emitter->setOp5(opArray[5]);
 
