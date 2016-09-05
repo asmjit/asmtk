@@ -389,12 +389,25 @@ MemOp:
     uint64_t disp = 0;
 
     // Parse "base + index * scale" part.
+    uint32_t flags = 0;
     uint32_t opType = AsmToken::kInvalid;
+
+MemRepeat:
     type = parser._tokenizer.next(token);
 
     if (type == AsmToken::kSym) {
-      if (!x86ParseRegister(base, token->data, token->len))
+      if (!x86ParseRegister(base, token->data, token->len)) {
+        if (token->len == 3 &&
+            !(flags & Mem::kFlagAbs) &&
+            Utils::toLower<uint32_t>(token->data[0]) == 'a' &&
+            Utils::toLower<uint32_t>(token->data[1]) == 'b' &&
+            Utils::toLower<uint32_t>(token->data[2]) == 's') {
+          flags |= Mem::kFlagAbs;
+          goto MemRepeat;
+        }
+
         return DebugUtils::errored(kErrorInvalidAddress);
+      }
 
       opType = parser._tokenizer.next(token);
       if (opType == AsmToken::kMul) {
@@ -469,6 +482,7 @@ MemMul:
           dst = x86::ptr(uint64_t(disp32));
 
         dst.as<X86Mem>().setSize(memSize);
+        dst.as<X86Mem>().addFlags(flags);
         if (seg.isReg()) dst.as<X86Mem>().setSegment(seg.as<X86Seg>());
 
         return kErrorOk;
