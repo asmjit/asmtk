@@ -6,51 +6,51 @@ using namespace asmjit;
 using namespace asmtk;
 
 struct TestEntry {
+  uint64_t baseAddress;
   uint8_t archType;
   uint8_t mustPass;
   uint8_t asmLength;
   uint8_t mcLength;
-  uint64_t baseAddress;
   char machineCode[16];
   char asmString[64];
 };
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
+  ASMJIT_UINT64_C(BASE),                           \
   ArchInfo::kTypeX86,                              \
   true,                                            \
   static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
   static_cast<uint8_t>(sizeof(MACHINE_CODE) - 1),  \
-  ASMJIT_UINT64_C(BASE),                           \
   MACHINE_CODE,                                    \
   ASM_STRING                                       \
 }
 
 #define X86_FAIL(BASE, ASM_STRING) {               \
+  ASMJIT_UINT64_C(BASE),                           \
   ArchInfo::kTypeX86,                              \
   false,                                           \
   static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
   0,                                               \
-  ASMJIT_UINT64_C(BASE),                           \
   "",                                              \
   ASM_STRING                                       \
 }
 
 #define X64_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
+  ASMJIT_UINT64_C(BASE),                           \
   ArchInfo::kTypeX64,                              \
   true,                                            \
   static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
   static_cast<uint8_t>(sizeof(MACHINE_CODE) - 1),  \
-  ASMJIT_UINT64_C(BASE),                           \
   MACHINE_CODE,                                    \
   ASM_STRING                                       \
 }
 
 #define X64_FAIL(BASE, ASM_STRING) {               \
+  ASMJIT_UINT64_C(BASE),                           \
   ArchInfo::kTypeX64,                              \
   false,                                           \
   static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
   0,                                               \
-  ASMJIT_UINT64_C(BASE),                           \
   "",                                              \
   ASM_STRING                                       \
 }
@@ -59,8 +59,6 @@ struct TestEntry {
 //   - Capstone - https://github.com/aquynh/capstone
 //   - XEDParse - https://github.com/x64dbg/XEDParse
 static const TestEntry testEntries[] = {
-  X86_PASS(0x0000000000000000, "\xF2\xA4"                                         , "repne movsb byte ptr es:[edi], byte ptr [esi]"),
-
   // 32-bit base instructions.
   X86_PASS(0x0000000000000000, "\x90"                                             , "nop"),
   X86_PASS(0x0000000000000000, "\x89\xD8"                                         , "mov EAX, Ebx"),
@@ -107,7 +105,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000123456789, "\xFF\x25\xFA\xFF\xFF\xFF"                         , "JMP QWORD[0x123456789]"),
   X64_PASS(0x00007FFCA9FF1977, "\xFF\x25\xFA\x00\xFF\xFF"                         , "JMP QWORD PTR DS:[0x7FFCA9FE1A77]"),
 
-  // 32-bit miscellaneous instructions
+  // 32-bit miscellaneous instructions.
   X86_PASS(0x0000000000405C6A, "\xFF\x35\xF4\x0A\x47\x00"                         , "PUSH DWORD PTR DS:[0x00000000470AF4]"),
   X86_PASS(0x0000000000405C92, "\x8B\x45\x08"                                     , "MOV EAX,DWORD PTR SS:[EBP+8]"),
   X86_PASS(0x0000000000405CB8, "\xC7\x45\xF4\x00\x40\x99\x01"                     , "MOV DWORD PTR SS:[EBP-0x00000000C],0x000000001994000"),
@@ -140,7 +138,7 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xC6\x05\xBA\x55\x0F\x00\xFF"                     , "MOV BYTE PTR [0x00000000F55BA], 0x00000000FF"),
   X86_PASS(0x0000000000000000, "\x81\x38\x80\x07\x00\x00"                         , "CMP DWORD PTR [EAX], 0x00000000780"),
 
-  // 64-bit miscellaneous instructions
+  // 64-bit miscellaneous instructions.
   X64_PASS(0x00007FFCA9FF1977, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOV RAX, 0x1234567890"),
   X64_PASS(0x00007FFCA9FF1977, "\x48\xC7\xC0\x00\x00\x00\x00"                     , "MOV RAX, 0"),
   X64_PASS(0x00007FFCA9FF1977, "\x48\xB8\x00\x00\x00\x00\x01\x00\x00\x00"         , "MOV RAX, 0x0000100000000"),

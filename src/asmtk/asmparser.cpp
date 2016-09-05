@@ -628,26 +628,47 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
 
     strToLower(lower, token->data, len);
 
-    // First try to match alias, as there are some tricky aliases.
+    // Try to match instruction alias, as there are some tricky ones.
     instId = x86ParseAlias(lower, len);
-    if (instId != kInvalidInst) return kErrorOk;
+    if (instId == kInvalidInst) {
+      // If that didn't work out, try to match instruction as defined by AsmJit.
+      instId = X86Inst::getIdByName(reinterpret_cast<char*>(lower), len);
+    }
 
-    // Secondly, match any instruction as defined by AsmJit.
-    instId = X86Inst::getIdByName(reinterpret_cast<char*>(lower), len);
-    if (instId != kInvalidInst) return kErrorOk;
+    if (instId == kInvalidInst) {
+      // Maybe it's an option / prefix?
+      uint32_t option = x86ParseOption(lower, len);
+      if (!(option))
+        return DebugUtils::errored(kErrorInvalidInstruction);
 
-    // Maybe it's instruction option?
-    uint32_t option = x86ParseOption(lower, len);
-    if (!(option))
-      return DebugUtils::errored(kErrorInvalidInstruction);
+      // Refuse to parse the same option specified multiple times.
+      if (ASMJIT_UNLIKELY(options & option))
+        return DebugUtils::errored(kErrorInvalidInstruction);
+      options |= option;
 
-    // Refuse to parse the same option specified multiple times.
-    if (ASMJIT_UNLIKELY(options & option))
-      return DebugUtils::errored(kErrorInvalidInstruction);
-    options |= option;
+      if (parser._tokenizer.next(token) != AsmToken::kSym)
+        return DebugUtils::errored(kErrorInvalidInstruction);
+    }
+    else {
+      // Ok, we have an instruction. Now let's parse the next token and decide if
+      // it belongs to the instruction or not. This is required to parse things
+      // such "jmp short" although we prefer "short jmp" (but the former is valid
+      // in other assemblers).
+      if (parser._tokenizer.next(token) == AsmToken::kSym) {
+        len = token->len;
+        if (len <= ASMJIT_ARRAY_SIZE(lower)) {
+          strToLower(lower, token->data, len);
+          uint32_t option = x86ParseOption(lower, len);
+          if (option == X86Inst::kOptionShortForm) {
+            options |= option;
+            return kErrorOk;
+          }
+        }
+      }
 
-    if (parser._tokenizer.next(token) != AsmToken::kSym)
-      return DebugUtils::errored(kErrorInvalidInstruction);
+      parser._tokenizer.back(token);
+      return kErrorOk;
+    }
   }
 }
 
