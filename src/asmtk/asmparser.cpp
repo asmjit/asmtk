@@ -477,9 +477,9 @@ MemMul:
         else if (base.isReg() && index.isReg())
           dst = x86::ptr(base.as<X86Gp>(), index.as<X86Gp>(), shift, disp32);
         else if (!base.isReg() && index.isReg())
-          dst = x86::ptr(uint64_t(disp32), index.as<X86Gp>(), shift);
+          dst = x86::ptr(uint64_t(disp), index.as<X86Gp>(), shift);
         else
-          dst = x86::ptr(uint64_t(disp32));
+          dst = x86::ptr(uint64_t(disp));
 
         dst.as<X86Mem>().setSize(memSize);
         dst.as<X86Mem>().addFlags(flags);
