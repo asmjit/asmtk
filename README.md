@@ -21,8 +21,9 @@ This project just started and is not complete. AsmTK at the moment requires asmj
 Features
 --------
 
-  * Asm parser an parse everything that AsmJit provides (i.e. supports all instruction sets, named labels, etc...).
-  * Assembles to `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` emitters at runtime.
+  * Asm parser can parse everything that AsmJit provides (i.e. supports all instruction sets, named labels, etc...).
+  * Asm parser can also parse instruction aliases defined by AsmTK (like `movsb`, `cmpsb`, `sal`, ...).
+  * Assembles to `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` at runtime.
   * More to be added :)
 
 AsmParser Usage Guide

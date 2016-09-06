@@ -49,7 +49,15 @@ static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
 enum X86Alias {
   kX86AliasStart = 0x00010000U,
 
-  kX86AliasCmpsb = kX86AliasStart,
+  kX86AliasInsb = kX86AliasStart,
+  kX86AliasInsd,
+  kX86AliasInsw,
+
+  kX86AliasOutsb,
+  kX86AliasOutsd,
+  kX86AliasOutsw,
+
+  kX86AliasCmpsb,
   kX86AliasCmpsd,
   kX86AliasCmpsq,
   kX86AliasCmpsw,
@@ -587,6 +595,9 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
 
   d0 += (static_cast<uint32_t>(s[3]) << 0);
   if (len == 4) {
+    if (d0 == COMB_CHAR_4('i', 'n', 's', 'b')) return kX86AliasInsb;
+    if (d0 == COMB_CHAR_4('i', 'n', 's', 'd')) return kX86AliasInsd;
+    if (d0 == COMB_CHAR_4('i', 'n', 's', 'w')) return kX86AliasInsw;
     return kInvalidInst;
   }
 
@@ -594,18 +605,30 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
   if (len == 5) {
     uint32_t base = 0;
 
-    if (d0 == COMB_CHAR_4('c', 'm', 'p', 's'))
+    if (d0 == COMB_CHAR_4('c', 'm', 'p', 's')) {
       base = kX86AliasCmpsb;
-    else if (d0 == COMB_CHAR_4('l', 'o', 'd', 's'))
+    }
+    else if (d0 == COMB_CHAR_4('l', 'o', 'd', 's')) {
       base = kX86AliasLodsb;
-    else if (d0 == COMB_CHAR_4('m', 'o', 'v', 's'))
+    }
+    else if (d0 == COMB_CHAR_4('m', 'o', 'v', 's')) {
       base = kX86AliasMovsb;
-    else if (d0 == COMB_CHAR_4('s', 'c', 'a', 's'))
+    }
+    else if (d0 == COMB_CHAR_4('s', 'c', 'a', 's')) {
       base = kX86AliasScasb;
-    else if (d0 == COMB_CHAR_4('s', 't', 'o', 's'))
+    }
+    else if (d0 == COMB_CHAR_4('s', 't', 'o', 's')) {
       base = kX86AliasStosb;
-    else
-      return base;
+    }
+    else if (d0 == COMB_CHAR_4('o', 'u', 't', 's')) {
+      if (d1 == COMB_CHAR_4('b', 0, 0, 0)) return kX86AliasOutsb;
+      if (d1 == COMB_CHAR_4('d', 0, 0, 0)) return kX86AliasOutsd;
+      if (d1 == COMB_CHAR_4('w', 0, 0, 0)) return kX86AliasOutsw;
+      return kInvalidInst;
+    }
+    else {
+      return kInvalidInst;
+    }
 
     if (d1 == COMB_CHAR_4('b', 0, 0, 0)) return base + 0;
     if (d1 == COMB_CHAR_4('d', 0, 0, 0)) return base + 1;
@@ -681,6 +704,14 @@ static void x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& o
     bool isStr = false;
 
     switch (instId) {
+      case kX86AliasInsb: memSize = 1; instId = X86Inst::kIdIns; isStr = true; break;
+      case kX86AliasInsd: memSize = 4; instId = X86Inst::kIdIns; isStr = true; break;
+      case kX86AliasInsw: memSize = 2; instId = X86Inst::kIdIns; isStr = true; break;
+
+      case kX86AliasOutsb: memSize = 1; instId = X86Inst::kIdOuts; isStr = true; break;
+      case kX86AliasOutsd: memSize = 4; instId = X86Inst::kIdOuts; isStr = true; break;
+      case kX86AliasOutsw: memSize = 2; instId = X86Inst::kIdOuts; isStr = true; break;
+
       case kX86AliasCmpsb: memSize = 1; instId = X86Inst::kIdCmps; isStr = true; break;
       case kX86AliasCmpsd: memSize = 4;
         isStr = opCount == 0 || (opCount == 2 && opArray[0].isMem() && opArray[1].isMem());
