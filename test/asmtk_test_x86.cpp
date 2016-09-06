@@ -76,6 +76,28 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x8B\x94\xC8\x00\x01\x00\x00"                     , "mov edx, [eax + ecx * 8 + 128 + 128]"),
   X86_PASS(0x0000000000000000, "\x64\x8B\x10"                                     , "mov edx, fs:[eax]"),
 
+  // 32-bit LEA with various addressing options.
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x00"                                 , "lea ax, [bx + si]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x01"                                 , "lea ax, [bx + di]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x02"                                 , "lea ax, [bp + si]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x03"                                 , "lea ax, [bp + di]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x04"                                 , "lea ax, [si]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x05"                                 , "lea ax, [di]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x46\x00"                             , "lea ax, [bp]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x07"                                 , "lea ax, [bx]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x40\x10"                             , "lea ax, [bx + si + 0x10]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x41\x20"                             , "lea ax, [bx + di + 0x20]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x42\x40"                             , "lea ax, [bp + si + 0x40]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x43\x60"                             , "lea ax, [bp + di + 0x60]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x84\x80\x00"                         , "lea ax, [si + 0x80]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x85\xA0\x00"                         , "lea ax, [di + 0xA0]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x86\xC0\x00"                         , "lea ax, [bp + 0xC0]"),
+  X86_PASS(0x0000000000000000, "\x67\x66\x8D\x87\xFF\x01"                         , "lea ax, [bx + 0x01FF]"),
+  X86_PASS(0x0000000000000000, "\x67\x8D\x00"                                     , "lea eax, [bx + si]"),
+  X86_PASS(0x0000000000000000, "\x67\x8D\x01"                                     , "lea eax, [bx + di]"),
+  X86_PASS(0x0000000000000000, "\x8D\x04\x33"                                     , "lea eax, [ebx + esi]"),
+  X86_PASS(0x0000000000000000, "\x8D\x04\x3B"                                     , "lea eax, [ebx + edi]"),
+
   // 32-bit mmx+ and sse+ instructions.
   X86_PASS(0x0000000000000000, "\x0F\xDB\xC1"                                     , "pand mm0, mm1"),
   X86_PASS(0x0000000000000000, "\x66\x0F\xDB\xC1"                                 , "pand xmm0, xmm1"),
