@@ -49,7 +49,9 @@ static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
 enum X86Alias {
   kX86AliasStart = 0x00010000U,
 
-  kX86AliasInsb = kX86AliasStart,
+  kX86AliasMovabs = kX86AliasStart,
+
+  kX86AliasInsb,
   kX86AliasInsd,
   kX86AliasInsw,
 
@@ -638,6 +640,11 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
     return kInvalidInst;
   }
 
+  d1 += static_cast<uint32_t>(s[5]) << 16;
+  if (len == 6) {
+    if (d0 == COMB_CHAR_4('m', 'o', 'v', 'a') && d1 == COMB_CHAR_4('b', 's', 0, 0)) return kX86AliasMovabs;
+  }
+
   return kInvalidInst;
 }
 
@@ -695,7 +702,7 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
   }
 }
 
-static void x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& opExtra, Operand_* opArray, uint32_t& opCount) {
+static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& opExtra, Operand_* opArray, uint32_t& opCount) {
   uint32_t i;
 
   if (instId >= kX86AliasStart) {
@@ -704,6 +711,20 @@ static void x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& o
     bool isStr = false;
 
     switch (instId) {
+      case kX86AliasMovabs:
+        // 'movabs' is basically a 'mov' forced to always be the longest (LongForm).
+        instId = X86Inst::kIdMov;
+        options |= X86Inst::kOptionLongForm;
+
+        // If the number of operands is not 2 it will fail later during validation.
+        if (opCount == 2) {
+          if ((opArray[0].isReg() && opArray[0].getId() != 0) ||
+              (opArray[1].isReg() && opArray[1].getId() != 0)) {
+            return DebugUtils::errored(kErrorInvalidInstruction);
+          }
+        }
+        break;
+
       case kX86AliasInsb: memSize = 1; instId = X86Inst::kIdIns; isStr = true; break;
       case kX86AliasInsd: memSize = 4; instId = X86Inst::kIdIns; isStr = true; break;
       case kX86AliasInsw: memSize = 2; instId = X86Inst::kIdIns; isStr = true; break;
@@ -800,6 +821,8 @@ static void x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& o
         mem.resetSegment();
     }
   }
+
+  return kErrorOk;
 }
 
 Error AsmParser::parse(const char* input, size_t len) {
@@ -925,7 +948,7 @@ Error AsmParser::parse(const char* input, size_t len) {
         for (uint32_t i = opCount; i < 4; i++)
           opArray[i].reset();
 
-        x86FixupInstruction(*this, instId, options, opExtra, opArray, opCount);
+        ASMJIT_PROPAGATE(x86FixupInstruction(*this, instId, options, opExtra, opArray, opCount));
         ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
 
         _emitter->setOptions(options);
