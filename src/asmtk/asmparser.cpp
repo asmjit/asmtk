@@ -89,7 +89,10 @@ enum X86Alias {
 // [asmtk::AsmParser]
 // ============================================================================
 
-AsmParser::AsmParser(CodeEmitter* emitter) : _emitter(emitter) {}
+AsmParser::AsmParser(CodeEmitter* emitter)
+  : _emitter(emitter),
+    _unknownSymbolHandler(NULL),
+    _unknownSymbolHandlerData(NULL) {}
 AsmParser::~AsmParser() {}
 
 // ============================================================================
@@ -318,6 +321,17 @@ static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* na
   Label L = parser._emitter->getLabelByName(reinterpret_cast<const char*>(name), len);
 
   if (!L.isValid()) {
+    if (parser.hasUnknownSymbolHandler()) {
+      Error err = parser._unknownSymbolHandler(&parser,
+        static_cast<Operand*>(&dst), reinterpret_cast<const char*>(name), len);
+
+      if (err)
+        return err;
+
+      if (!dst.isNone())
+        return kErrorOk;
+    }
+
     L = parser._emitter->newNamedLabel(reinterpret_cast<const char*>(name), len);
     if (!L.isValid()) return DebugUtils::errored(kErrorNoHeapMemory);
   }

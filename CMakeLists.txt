@@ -100,6 +100,7 @@ if(NOT ASMTK_EMBED)
 
     set(ASMTK_TEST_SRC
       asmtk_test_cmd
+      asmtk_test_handler
       asmtk_test_x86)
 
     foreach(_target ${ASMTK_TEST_SRC})
