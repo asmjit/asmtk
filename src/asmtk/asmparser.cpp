@@ -294,7 +294,7 @@ static uint32_t x86ParseSize(const uint8_t* s, size_t len) {
     }
 
     // Sizes of length '6':
-    d += (Utils::toLower<uint32_t>(s[0]) << 16);
+    d += (Utils::toLower<uint32_t>(s[1]) << 16);
     if (len == 6) {
       if (d == COMB_CHAR_4('m', 'm', 0, 0)) return 8;
       if (d == COMB_CHAR_4('d', 'q', 0, 0)) return 16;
@@ -302,7 +302,7 @@ static uint32_t x86ParseSize(const uint8_t* s, size_t len) {
     }
 
     // Sizes of length '7':
-    d += (Utils::toLower<uint32_t>(s[0]) << 8);
+    d += (Utils::toLower<uint32_t>(s[2]) << 8);
     if (len == 7) {
       if (d == COMB_CHAR_4('x', 'm', 'm', 0)) return 16;
       if (d == COMB_CHAR_4('y', 'm', 'm', 0)) return 32;
