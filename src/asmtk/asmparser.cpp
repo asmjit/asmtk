@@ -179,6 +179,7 @@ static bool x86ParseRegister(Operand_& op, const uint8_t* s, size_t len) {
       if (cn == COMB_CHAR_2('d', 'x')) { regId = X86Gp::kIdDx; goto Done; }
       if (cn == COMB_CHAR_2('b', 'x')) { regId = X86Gp::kIdBx; goto Done; }
       if (cn == COMB_CHAR_2('c', 'x')) { regId = X86Gp::kIdCx; goto Done; }
+
 TrySpBpSiDi:
       if (cn == COMB_CHAR_2('s', 'p')) { regId = X86Gp::kIdSp; goto Done; }
       if (cn == COMB_CHAR_2('b', 'p')) { regId = X86Gp::kIdBp; goto Done; }
@@ -409,124 +410,125 @@ static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) 
 MemOp:
     Operand base;
     Operand index;
+
     uint32_t shift = 0;
-    uint64_t disp = 0;
-
-    // Parse "base + index * scale" part.
     uint32_t flags = 0;
-    uint32_t opType = AsmToken::kInvalid;
+    uint64_t offset = 0;
 
-MemRepeat:
+    // Parse address prefix - 'abs'.
     type = parser._tokenizer.next(token);
-
     if (type == AsmToken::kSym) {
-      if (!x86ParseRegister(base, token->data, token->len)) {
-        if (token->len == 3 &&
-            !(flags & Mem::kFlagAbs) &&
-            Utils::toLower<uint32_t>(token->data[0]) == 'a' &&
-            Utils::toLower<uint32_t>(token->data[1]) == 'b' &&
-            Utils::toLower<uint32_t>(token->data[2]) == 's') {
-          flags |= Mem::kFlagAbs;
-          goto MemRepeat;
-        }
-
-        return DebugUtils::errored(kErrorInvalidAddress);
-      }
-
-      opType = parser._tokenizer.next(token);
-      if (opType == AsmToken::kMul) {
-        index = base;
-        base.reset();
-        goto MemMul;
-      }
-      else if (opType == AsmToken::kAdd) {
+      if (token->len == 3 &&
+          Utils::toLower<uint32_t>(token->data[0]) == 'a' &&
+          Utils::toLower<uint32_t>(token->data[1]) == 'b' &&
+          Utils::toLower<uint32_t>(token->data[2]) == 's') {
+        flags |= Mem::kFlagAbs;
         type = parser._tokenizer.next(token);
-        if (type == AsmToken::kSym) {
-          if (!x86ParseRegister(index, token->data, token->len))
+      }
+    }
+
+    // Parse "[base] + [index [* scale]] + [offset]" parts.
+    uint32_t opType = AsmToken::kAdd;
+    for (;;) {
+      if (type == AsmToken::kSym) {
+        if (opType != AsmToken::kAdd)
+          return DebugUtils::errored(kErrorInvalidAddress);
+
+        Operand reg;
+        if (!x86ParseRegister(reg, token->data, token->len))
+          return DebugUtils::errored(kErrorInvalidAddress);
+
+        type = parser._tokenizer.next(token);
+        opType = AsmToken::kInvalid;
+
+        if (type != AsmToken::kMul) {
+          // Prefer base, then index.
+          if (base.isNone())
+            base = reg;
+          else if (index.isNone())
+            index = reg;
+          else
+            return DebugUtils::errored(kErrorInvalidAddress);
+          continue;
+        }
+        else {
+          // Must be index.
+          if (index.isNone())
+            index = reg;
+          else
             return DebugUtils::errored(kErrorInvalidAddress);
 
-          opType = parser._tokenizer.next(token);
-          if (opType == AsmToken::kMul) {
-MemMul:
-            type = parser._tokenizer.next(token);
-            if (type != AsmToken::kU64)
-              return DebugUtils::errored(kErrorInvalidAddress);
+          type = parser._tokenizer.next(token);
+          if (type != AsmToken::kU64)
+            return DebugUtils::errored(kErrorInvalidAddressScale);
 
-            switch (token->u64) {
-              case 1: shift = 0; break;
-              case 2: shift = 1; break;
-              case 4: shift = 2; break;
-              case 8: shift = 3; break;
-              default:
-                return DebugUtils::errored(kErrorInvalidAddress);
-            }
-            opType = parser._tokenizer.next(token);
+          switch (token->u64) {
+            case 1: shift = 0; break;
+            case 2: shift = 1; break;
+            case 4: shift = 2; break;
+            case 8: shift = 3; break;
+            default:
+              return DebugUtils::errored(kErrorInvalidAddressScale);
           }
         }
-        else if (type == AsmToken::kU64) {
-          disp = token->u64;
-          opType = parser._tokenizer.next(token);
+      }
+      else if (type == AsmToken::kU64) {
+        if (opType == AsmToken::kAdd) {
+          offset += token->u64;
+          opType = AsmToken::kInvalid;
+        }
+        else if (opType == AsmToken::kSub) {
+          offset -= token->u64;
+          opType = AsmToken::kInvalid;
         }
         else {
           return DebugUtils::errored(kErrorInvalidAddress);
         }
       }
-      else if (opType == AsmToken::kSub) {
-        goto MemDisp;
+      else if (type == AsmToken::kAdd) {
+        if (opType == AsmToken::kInvalid)
+          opType = type;
       }
-      else if (opType != AsmToken::kRBracket) {
-        return DebugUtils::errored(kErrorInvalidAddress);
+      else if (type == AsmToken::kSub) {
+        if (opType == AsmToken::kInvalid)
+          opType = type;
+        else
+          opType = opType == AsmToken::kSub ? AsmToken::kAdd : AsmToken::kSub;
       }
-    }
-    else if (type == AsmToken::kAdd || type == AsmToken::kSub) {
-      opType = type;
-    }
-    else if (type == AsmToken::kU64) {
-      disp = token->u64;
-      opType = parser._tokenizer.next(token);
-    }
-    else {
-      return DebugUtils::errored(kErrorInvalidAddress);
-    }
-
-    for (;;) {
-      // Parse closing ']'.
-      if (opType == AsmToken::kRBracket) {
-        if (!Utils::isInt32<int64_t>(static_cast<int32_t>(disp)))
+      else if (type == AsmToken::kRBracket) {
+        if (opType != AsmToken::kInvalid)
           return DebugUtils::errored(kErrorInvalidAddress);
 
-        int32_t disp32 = static_cast<int32_t>(static_cast<int64_t>(disp));
-        if (base.isReg() && !index.isReg())
-          dst = x86::ptr(base.as<X86Gp>(), disp32);
-        else if (base.isReg() && index.isReg())
-          dst = x86::ptr(base.as<X86Gp>(), index.as<X86Gp>(), shift, disp32);
-        else if (!base.isReg() && index.isReg())
-          dst = x86::ptr(uint64_t(disp), index.as<X86Gp>(), shift);
-        else
-          dst = x86::ptr(uint64_t(disp));
+        if (base.isReg()) {
+          if (!Utils::isInt32<int64_t>(static_cast<int64_t>(offset)) &&
+              !Utils::isUInt32<int64_t>(static_cast<int64_t>(offset)))
+            return DebugUtils::errored(kErrorInvalidAddress64Bit);
+
+          int32_t disp32 = static_cast<int32_t>(offset & 0xFFFFFFFFU);
+          if (!index.isReg())
+            dst = x86::ptr(base.as<X86Gp>(), disp32);
+          else
+            dst = x86::ptr(base.as<X86Gp>(), index.as<X86Gp>(), shift, disp32);
+        }
+        else {
+          if (!index.isReg())
+            dst = x86::ptr(offset);
+          else
+            dst = x86::ptr(offset, index.as<X86Gp>(), shift);
+        }
 
         dst.as<X86Mem>().setSize(memSize);
         dst.as<X86Mem>().addFlags(flags);
         if (seg.isReg()) dst.as<X86Mem>().setSegment(seg.as<X86Seg>());
 
         return kErrorOk;
+        break;
+      }
+      else {
+        return DebugUtils::errored(kErrorInvalidAddress);
       }
 
-      // Displacement.
-      if (opType != AsmToken::kAdd && opType != AsmToken::kSub)
-        return DebugUtils::errored(kErrorInvalidAddress);
-
-MemDisp:
       type = parser._tokenizer.next(token);
-      if (type != AsmToken::kU64)
-        return DebugUtils::errored(kErrorInvalidAddress);
-
-      if (opType == AsmToken::kAdd)
-        disp += token->u64;
-      else
-        disp -= token->u64;
-
-      opType = parser._tokenizer.next(token);
     }
   }
 
