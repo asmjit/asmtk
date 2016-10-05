@@ -121,6 +121,10 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xC5\xF5\xFD\xC7"                                 , "vpaddw ymm0, ymm1, ymm7"),
   X86_PASS(0x0000000000000000, "\x62\xF1\xF5\xD9\x58\x00"                         , "vaddpd zmm0 {k1}{z}, zmm1, [eax] {1tox}"),
 
+  // 64-bit avx+ and avx-512 instructions.
+  X64_PASS(0x0000000000000000, "\xC4\x41\x35\xFD\xC7"                             , "vpaddw ymm8, ymm9, ymm15"),
+  X64_PASS(0x0000000000000000, "\x62\x71\xB5\xD9\x58\x08"                         , "vaddpd zmm9 {k1}{z}, zmm9, [rax] {1tox}"),
+
   // 32-bit jmp/call.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
   X86_PASS(0x0000000077513BEE, "\xEB\x07"                                         , "JMP SHORT 0x77513BF7"),
@@ -267,9 +271,17 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xF3\xAF"                                         , "repe  scasd eax, dword ptr es:[edi]"),
 
   // 32-bit malformed input - should cause either parsing or validation error.
+  X86_FAIL(0x0000000000001000, "short jmp 0x2000"),
+  X86_FAIL(0x0000000000000000, "mov rax, 0x0"),
+  X86_FAIL(0x0000000000000000, "mov r15d, 0x0"),
+  X86_FAIL(0x0000000000000000, "mov r15w, 0x0"),
+  X86_FAIL(0x0000000000000000, "mov r15b, 0x0"),
   X86_FAIL(0x0000000000000000, "MOV EAX, DWORD PTR ]["),
   X86_FAIL(0x0000000000000000, "MOV EAX, DWORD PTR [RAX]"),
   X86_FAIL(0x0000000000000000, "MOV EAX, DWORD PTR [0xFFFFFFFFF]"),
+
+  // 64-bit malformed input - should cause either parsing or validation error.
+  X64_FAIL(0x0000000000001000, "short jmp 0x2000")
 };
 
 struct TestStats {
