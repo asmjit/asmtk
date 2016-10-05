@@ -21,8 +21,8 @@ struct X86RegInfo {
   uint32_t count;
 };
 
-#define DEFINE_REG(opType, regType, regKind, regSize, count) \
-  {{{ uint8_t(opType), uint8_t(regType), uint8_t(regKind), uint8_t(regSize) }}, count }
+#define DEFINE_REG(opType, regType, kind, size, count) \
+  {{{ uint8_t(opType), uint8_t(regType), uint8_t(kind), uint8_t(size) }}, count }
 static const X86RegInfo x86RegInfo[X86Reg::kRegCount] = {
   DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
   DEFINE_REG(Operand::kOpNone, X86Reg::kRegNone        , 0                , 0 , 0  ),
@@ -728,17 +728,9 @@ static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
 
     switch (instId) {
       case kX86AliasMovabs:
-        // 'movabs' is basically a 'mov' forced to always be the longest (LongForm).
+        // 'movabs' is basically the longest 'mov'.
         instId = X86Inst::kIdMov;
         options |= X86Inst::kOptionLongForm;
-
-        // If the number of operands is not 2 it will fail later during validation.
-        if (opCount == 2) {
-          if ((opArray[0].isReg() && opArray[0].getId() != 0) ||
-              (opArray[1].isReg() && opArray[1].getId() != 0)) {
-            return DebugUtils::errored(kErrorInvalidInstruction);
-          }
-        }
         break;
 
       case kX86AliasInsb: memSize = 1; instId = X86Inst::kIdIns; isStr = true; break;
@@ -968,9 +960,13 @@ Error AsmParser::parse(const char* input, size_t len) {
         ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
 
         _emitter->setOptions(options);
-        if (!opExtra.isNone()) _emitter->setOpExtra(opExtra);
-        if (opCount > 4) _emitter->setOp4(opArray[4]);
-        if (opCount > 5) _emitter->setOp5(opArray[5]);
+        if (!opExtra.isNone())
+          _emitter->setOpExtra(opExtra);
+
+        if (opCount > 4) {
+          _emitter->setOp4(opArray[4]);
+          if (opCount > 5) _emitter->setOp5(opArray[5]);
+        }
 
         ASMJIT_PROPAGATE(_emitter->_emit(instId, opArray[0], opArray[1], opArray[2], opArray[3]));
       }

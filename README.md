@@ -64,7 +64,8 @@ static void dumpCode(const uint8_t* buf, size_t len) {
 
 int main(int argc, char* argv[]) {
   // Setup a CodeHolder for X64.
-  CodeHolder code(ArchInfo::kIdX64);
+  CodeInfo ci(ArchInfo::kTypeX64);
+  CodeHolder code(ci);
 
   // Attach an assembler to the CodeHolder.
   X86Assembler a(&code);
@@ -88,8 +89,8 @@ int main(int argc, char* argv[]) {
   code.sync();
 
   // Now you can print the code, which is stored in the first section (.text).
-  CodeBuffer& buffer = code.getSectionEntry(0)->buffer; // TODO: Make this nicer.
-  dumpCode(buffer.data, buffer.length);
+  CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
+  dumpCode(buffer.getData(), buffer.getLength());
 
   return 0;
 }

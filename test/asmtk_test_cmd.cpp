@@ -5,7 +5,8 @@
 using namespace asmjit;
 using namespace asmtk;
 
-struct CmdLine {
+class CmdLine {
+public:
   CmdLine(int argc, const char* const* argv)
     : argc(argc),
       argv(argv) {}
@@ -174,8 +175,8 @@ int main(int argc, char* argv[]) {
     if (isCommand(input, ".print")) {
       code.sync(); // First sync with the assembler.
 
-      CodeBuffer& buffer = code.getSectionEntry(0)->buffer;
-      dumpCode(buffer.data, buffer.length);
+      CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
+      dumpCode(buffer.getData(), buffer.getLength());
       continue;
     }
 

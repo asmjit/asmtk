@@ -148,15 +148,15 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000405D4C, "\x8A\x14\x08"                                     , "MOV DL,BYTE PTR DS:[EAX+ECX]"),
   X86_PASS(0x0000000000405D4C, "\x0F\xB7\x4C\x45\x98"                             , "MOVZX ECX,WORD PTR SS:[EAX*2+EBP-0x0000000068]"),
   X86_PASS(0x0000000000405D4C, "\xC6\x84\x30\x1D\x01\x00\x00\x00"                 , "MOV BYTE PTR DS:[EAX+ESI+0x0000000011D],0"),
-  X86_PASS(0x0000000000405F1E, "\x6A\x0D"                                         , "PUSH 0x00000000D"),
-  X86_PASS(0x0000000000405F1E, "\x68\xFF\x00\x00\x00"                             , "PUSH 0x00000000FF"),
+  X86_PASS(0x0000000000000000, "\x6A\x0D"                                         , "PUSH 0x00000000D"),
+  X86_PASS(0x0000000000000000, "\x68\xFF\x00\x00\x00"                             , "PUSH 0x00000000FF"),
   X86_PASS(0x0000000000405FF9, "\x83\x60\x70\xFD"                                 , "AND DWORD PTR DS:[EAX+0x0000000070],0x00000000FFFFFFFD"),
   X86_PASS(0x0000000000405FF9, "\x81\x60\x70\x0D\x00\x00\xF0"                     , "AND DWORD PTR DS:[EAX+0x0000000070],0x00000000F000000D"),
   X86_PASS(0x0000000000405C23, "\xf2\x0f\x11\x0d\x00\x00\x00\x00"                 , "MOVSD QWORD PTR ds:[0x000000000],xmm1"),
-  X86_PASS(0x0000000000405C23, "\x8B\x04\xCD\x00\x00\x00\x00"                     , "MOV EAX,[ECX*8]"),
-  X86_PASS(0x0000000000405C23, "\x60"                                             , "PUSHAD"),
-  X86_PASS(0x0000000000405C23, "\xCC"                                             , "INT3"),
-  X86_PASS(0x0000000000405C23, "\xCD\x03"                                         , "INT 3"),
+  X86_PASS(0x0000000000000000, "\x8B\x04\xCD\x00\x00\x00\x00"                     , "MOV EAX,[ECX*8]"),
+  X86_PASS(0x0000000000000000, "\x60"                                             , "PUSHAD"),
+  X86_PASS(0x0000000000000000, "\xCC"                                             , "INT3"),
+  X86_PASS(0x0000000000000000, "\xCD\x03"                                         , "INT 3"),
   X86_PASS(0x0000000000405C23, "\xE7\xE9"                                         , "OUT 0x00000000E9, EAX"),
   X86_PASS(0x0000000000405C23, "\x69\xC0\xFF\x01\x00\x00"                         , "IMUL EAX, EAX, 0x000000001FF"),
   X86_PASS(0x0000000000405C23, "\x69\xC0\xFF\x00\x00\x00"                         , "IMUL EAX, EAX, 0x00000000FF"),
@@ -164,9 +164,9 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000405C23, "\x6B\xC0\x1E"                                     , "IMUL EAX, EAX, 0x000000001E"),
   X86_PASS(0x0000000000405C23, "\xB8\x78\x56\x34\x12"                             , "MOV EAX, 0x0000000012345678"),
   X86_PASS(0x0000000000405C23, "\xB8\xFE\xFF\xFF\xFF"                             , "MOV EAX, 0x00000000FFFFFFFE"),
-  X86_PASS(0x0000000000405C23, "\xDF\x3C\x24"                                     , "FISTP QWORD PTR [ESP]"),
-  X86_PASS(0x0000000000405C23, "\xD9\xF6"                                         , "FDECSTP"),
-  X86_PASS(0x0000000000405C23, "\xD9\xFF"                                         , "FCOS"),
+  X86_PASS(0x0000000000000000, "\xDF\x3C\x24"                                     , "FISTP QWORD PTR [ESP]"),
+  X86_PASS(0x0000000000000000, "\xD9\xF6"                                         , "FDECSTP"),
+  X86_PASS(0x0000000000000000, "\xD9\xFF"                                         , "FCOS"),
   X86_PASS(0x0000000000405C23, "\xC7\x85\xE8\xFD\xFF\xFF\x00\x00\x08\x02"         , "MOV DWORD PTR [EBP-0x00000000218],0x000000002080000"),
   X86_PASS(0x0000000000405C23, "\xC7\x84\x24\xE8\xFD\xFF\xFF\x00\x00\x08\x02"     , "MOV DWORD PTR [ESP-0x00000000218],0x000000002080000"),
   X86_PASS(0x0000000000000000, "\xC7\x05\xBA\x55\x0F\x00\xFF\x00\x00\x00"         , "MOV DWORD PTR [0x00000000F55BA], 0x00000000FF"),
@@ -175,27 +175,28 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x81\x38\x80\x07\x00\x00"                         , "CMP DWORD PTR [EAX], 0x00000000780"),
 
   // 64-bit miscellaneous instructions.
-  X64_PASS(0x00007FFCA9FF1977, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOV RAX, 0x1234567890"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\xC7\xC0\x00\x00\x00\x00"                     , "MOV RAX, 0"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\xB8\x00\x00\x00\x00\x01\x00\x00\x00"         , "MOV RAX, 0x0000100000000"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\xC7\xC0\x8F\xFA\xFF\x00"                     , "MOV RAX, 0x0000FFFA8F"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOVABS RAX, 0x00001234567890"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\xB8\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF"         , "MOVABS RAX, 0x0000FFFFFFFFFFFFFFFE"),
+  X64_PASS(0x0000000000000000, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOV RAX, 0x1234567890"),
+  X64_PASS(0x0000000000000000, "\x48\xC7\xC0\x00\x00\x00\x00"                     , "MOV RAX, 0"),
+  X64_PASS(0x0000000000000000, "\x48\xB8\x00\x00\x00\x00\x01\x00\x00\x00"         , "MOV RAX, 0x0000100000000"),
+  X64_PASS(0x0000000000000000, "\x48\xC7\xC0\x8F\xFA\xFF\x00"                     , "MOV RAX, 0x0000FFFA8F"),
+  X64_PASS(0x0000000000000000, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOVABS RAX, 0x00001234567890"),
+  X64_PASS(0x0000000000000000, "\x48\xB8\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF"         , "MOVABS RAX, 0x0000FFFFFFFFFFFFFFFE"),
+  X64_PASS(0x0000000000000000, "\x49\xB8\xF8\xFF\xFF\xFF\x01\x00\x00\x00"         , "movabs r8,0x1fffffff8"),
   X64_PASS(0x00007FFCA9FF1977, "\x48\xA1\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOV RAX, QWORD PTR DS:[0x00001234567890]"),
-  X64_PASS(0x00007FFCA9FF1977, "\xCC"                                             , "INT3"),
-  X64_PASS(0x00007FFCA9FF1977, "\xCD\x03"                                         , "INT 3"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\x63\xD0"                                     , "MOVSXD RDX, EAX"),
+  X64_PASS(0x0000000000000000, "\xCC"                                             , "INT3"),
+  X64_PASS(0x0000000000000000, "\xCD\x03"                                         , "INT 3"),
+  X64_PASS(0x0000000000000000, "\x48\x63\xD0"                                     , "MOVSXD RDX, EAX"),
   X64_PASS(0x00007FFCA9FF1977, "\x45\x0F\xBE\x24\x2F"                             , "MOVSX R12D, BYTE PTR [R15+RBP*1]"),
-  X64_PASS(0x00007FFCA9FF1977, "\x4D\x69\xED\x10\x01\x00\x00"                     , "IMUL R13, R13, 0x0000110"),
-  X64_PASS(0x00007FFCA9FF1977, "\x4D\x6B\xED\x11"                                 , "IMUL R13, R13, 0x000011"),
+  X64_PASS(0x0000000000000000, "\x4D\x69\xED\x10\x01\x00\x00"                     , "IMUL R13, R13, 0x0000110"),
+  X64_PASS(0x0000000000000000, "\x4D\x6B\xED\x11"                                 , "IMUL R13, R13, 0x000011"),
   X64_PASS(0x00007FFCA9FF1977, "\x48\xC7\x05\xAF\x55\x0F\x00\xFF\x00\x00\x00"     , "MOV QWORD PTR [RIP+0x0000F55AF], 0x0000FF"),
   X64_PASS(0x0000000000000000, "\x48\xC7\x05\xAF\x55\x0F\x00\xFF\x00\x00\x00"     , "MOV QWORD PTR [0x0000F55BA], 0x0000FF"),
   X64_PASS(0x00007FFCA9FF1977, "\x48\xC7\x05\xAF\x55\x0F\x00\xFE\xFF\xFF\xFF"     , "MOV QWORD PTR [RIP+0x0000F55AF], 0x0000FFFFFFFFFFFFFFFE"),
-  X64_PASS(0x00007FFCA9FF1977, "\x0F\xC7\x08"                                     , "CMPXCHG8B [RAX]"),
-  X64_PASS(0x00007FFCA9FF1977, "\x48\x0F\xC7\x08"                                 , "CMPXCHG16B [RAX]"),
+  X64_PASS(0x0000000000000000, "\x0F\xC7\x08"                                     , "CMPXCHG8B [RAX]"),
+  X64_PASS(0x0000000000000000, "\x48\x0F\xC7\x08"                                 , "CMPXCHG16B [RAX]"),
   X64_PASS(0x00007FF6845CB974, "\x48\x8D\x15\xA5\x16\x25\x00"                     , "LEA RDX, QWORD PTR DS:[0x00007FF68481D020]"),
   X64_PASS(0x00007FF6845CB974, "\x48\x8D\x15\xA5\x16\x25\x00"                     , "LEA RDX, QWORD PTR DS:[RIP+0x00002516A5]"),
-  X64_PASS(0x00007FF6845CB974, "\x48\x8D\x10"                                     , "LEA RDX, [RAX]"),
+  X64_PASS(0x0000000000000000, "\x48\x8D\x10"                                     , "LEA RDX, [RAX]"),
   X64_PASS(0x00007FF6845CB982, "\x48\x83\x05\x63\x0F\x25\x00\x01"                 , "ADD QWORD PTR [0x00007FF68481C8ED], 0x00001"),
   X64_PASS(0x00007FF6845CB982, "\x48\x83\x05\x63\x0F\x25\x00\x01"                 , "ADD QWORD PTR [RIP+0x0000250F63], 0x00001"),
   X64_PASS(0x0000000000000000, "\x48\x83\x05\xFF\xFF\xFF\xFF\x01"                 , "ADD QWORD PTR [RIP+0x0000FFFFFFFF], 0x00001"),
@@ -323,12 +324,11 @@ static bool runTests(TestStats& out, const TestEntry* entries, size_t count) {
       }
     }
     else {
-      CodeHolder::SectionEntry* se = code.getSectionEntry(0);
-      CodeBuffer& buf = se->buffer;
+      CodeBuffer& buf = code.getSectionEntry(0)->getBuffer();
 
-      if (entry.mustPass && buf.length == entry.mcLength && ::memcmp(buf.data, entry.machineCode, entry.mcLength) == 0) {
+      if (entry.mustPass && buf.getLength() == entry.mcLength && ::memcmp(buf.getData(), entry.machineCode, entry.mcLength) == 0) {
         printf("[SUCCESS %s] '%s' -> '", arch, entry.asmString);
-        dumpHex(reinterpret_cast<const char*>(buf.data), buf.length);
+        dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
         printf("'\n");
 
         out.passed++;
@@ -336,7 +336,7 @@ static bool runTests(TestStats& out, const TestEntry* entries, size_t count) {
       }
       else {
         printf("[FAILURE %s] '%s' -> '", arch, entry.asmString);
-        dumpHex(reinterpret_cast<const char*>(buf.data), buf.length);
+        dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
         printf("'");
 
         if (entry.mustPass) {
