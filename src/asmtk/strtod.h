@@ -4,13 +4,14 @@
 // [License]
 // Zlib - See LICENSE.md file in the package.
 
-
 // [Guard]
 #ifndef ASMTK_STRTOD_H
 #define ASMTK_STRTOD_H
 
 // [Dependencies]
-#if defined(_MSC_VER)
+#include <asmjit/base.h>
+
+#if ASMJIT_OS_WINDOWS
 # define ASMTK_STRTOD_MSLOCALE
 # include <locale.h>
 # include <stdlib.h>
