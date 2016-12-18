@@ -29,7 +29,7 @@ public:
   AsmParser(asmjit::CodeEmitter* emitter);
   ~AsmParser();
 
-  Error parse(const char* input, size_t len = asmjit::kInvalidIndex);
+  Error parse(const char* input, size_t len = asmjit::Globals::kInvalidIndex);
 
   // --------------------------------------------------------------------------
   // [Accessors]

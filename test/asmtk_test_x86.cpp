@@ -61,7 +61,8 @@ struct TestEntry {
 static const TestEntry testEntries[] = {
   // 32-bit base instructions.
   X86_PASS(0x0000000000000000, "\x90"                                             , "nop"),
-  X86_PASS(0x0000000000000000, "\x89\xD8"                                         , "mov EAX, Ebx"),
+  X86_PASS(0x0000000000000000, "\x8B\x3C"                                         , "mov EAX, Ebx"),
+  X86_PASS(0x0000000000000000, "\x89\xD8"                                         , "modmr mov eax, ebx"),
   X86_PASS(0x0000000000000000, "\xB8\xFF\xFF\xFF\xFF"                             , "mov eax, 0xFFFFFFFF"),
   X86_PASS(0x0000000000000000, "\x8C\xE0"                                         , "mov eax, fs"),
   X86_PASS(0x0000000000000000, "\x8E\xE0"                                         , "mov fs, eax"),
@@ -378,7 +379,7 @@ int main(int argc, char* argv[]) {
   bool allPassed = runTests(stats, testEntries, ASMJIT_ARRAY_SIZE(testEntries));
 
   if (allPassed) {
-    printf("All tests passed!\n");
+    printf("All %u tests passed!\n", stats.total);
     return 0;
   }
   else {

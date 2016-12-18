@@ -33,13 +33,13 @@ install:
     fi
   - |
     mkdir -p deps/asmjit
-    git clone --branch=next --depth=1 https://github.com/kobalicek/asmjit.git deps/asmjit
+    git clone --branch=next-wip --depth=1 https://github.com/asmjit/asmjit.git deps/asmjit
 
 before_script:
   - mkdir build
   - cd build
   - cmake --version
-  - cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DASMJIT_DIR=deps/asmjit -DASMTK_BUILD_TEST=1
+  - cmake .. -G"Unix Makefiles" -DCMAKE_BUILD_TYPE="$BUILD_TYPE" -DASMJIT_DIR="../deps/asmjit" -DASMTK_BUILD_TEST=1
   - cd ..
 
 script:

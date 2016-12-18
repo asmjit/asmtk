@@ -13,11 +13,6 @@ Introduction
 
 AsmTK is a sister project of AsmJit library, which provides concepts that are useful mostly in AOT code-generation.
 
-Disclaimer
-----------
-
-This project just started and is not complete. AsmTK at the moment requires asmjit:next branch, which will soon replace asmjit:master.
-
 Features
 --------
 
@@ -25,6 +20,11 @@ Features
   * Asm parser can also parse instruction aliases defined by AsmTK (like `movsb`, `cmpsb`, `sal`, ...).
   * Assembles to `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` at runtime.
   * More to be added :)
+
+TODO
+----
+
+  * [ ] Implement asmtk::Linker that will add the possibility to write shared libraries and executables.
 
 AsmParser Usage Guide
 ---------------------
