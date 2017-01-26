@@ -33,7 +33,7 @@ install:
     fi
   - |
     mkdir -p deps/asmjit
-    git clone --branch=next-wip --depth=1 https://github.com/asmjit/asmjit.git deps/asmjit
+    git clone --depth=1 https://github.com/asmjit/asmjit.git deps/asmjit
 
 before_script:
   - mkdir build
