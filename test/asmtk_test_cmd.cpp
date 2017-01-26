@@ -106,7 +106,7 @@ int main(int argc, char* argv[]) {
   const char* baseArg = cmd.getKey("--base");
 
   uint32_t archType = ArchInfo::kTypeX64;
-  uint64_t baseAddress = kNoBaseAddress;
+  uint64_t baseAddress = Globals::kNoBaseAddress;
 
   if (archArg) {
     if (::strcmp(archArg, "x86") == 0) {

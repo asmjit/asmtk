@@ -1,3 +1,4 @@
 .kdev4
-asmtk.kdev4
+*.kdev4
+build
 build_*
