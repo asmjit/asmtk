@@ -63,11 +63,12 @@ static void dumpCode(const uint8_t* buf, size_t len) {
 }
 
 int main(int argc, char* argv[]) {
-  // Setup a CodeHolder for X64.
+  // Setup CodeHolder for X64.
   CodeInfo ci(ArchInfo::kTypeX64);
-  CodeHolder code(ci);
+  CodeHolder code;
+  code.init(ci);
 
-  // Attach an assembler to the CodeHolder.
+  // Attach X86Assembler `code`.
   X86Assembler a(&code);
 
   // Create AsmParser that will emit to X86Assembler.
