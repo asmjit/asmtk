@@ -16,14 +16,16 @@ AsmTK is a sister project of AsmJit library, which provides concepts that are us
 Features
 --------
 
+  * Both X86 and X64 modes are supported and can be selected at runtime (i.e. they not depend on how your application is compiled).
   * Asm parser can parse everything that AsmJit provides (i.e. supports all instruction sets, named labels, etc...).
-  * Asm parser can also parse instruction aliases defined by AsmTK (like `movsb`, `cmpsb`, `sal`, ...).
-  * Assembles to `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` at runtime.
-  * More to be added :)
+  * Asm parser can also parse instruction aliases defined by AsmTK (like `movsb`, `cmpsb`, `sal`, ...). AsmJit provides just generic `movs`, `cmps`, etc... so these are extras that are handled and recognized by AsmTK.
+  * Assembles to any `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` at runtime, and that the result can be post-processed as well
+  * More to be added...
 
 TODO
 ----
 
+  * [ ] More aliases to some SIMD instructions (to be added).
   * [ ] Implement asmtk::Linker that will add the possibility to write shared libraries and executables.
 
 AsmParser Usage Guide
@@ -76,8 +78,8 @@ int main(int argc, char* argv[]) {
 
   // Parse some assembly.
   Error err = p.parse(
-    "mov eax, ebx\n"
-    "vaddpd zmm0, zmm1, [eax + 128]\n");
+    "mov rax, rbx\n"
+    "vaddpd zmm0, zmm1, [rax + 128]\n");
 
   // Error handling (use asmjit::ErrorHandler for more robust error handling).
   if (err) {
@@ -97,7 +99,7 @@ int main(int argc, char* argv[]) {
 }
 ```
 
-You should check out the test directory to see how AsmTK should be used.
+You should check out the test directory to see how AsmTK integrates with AsmJit.
 
 Support
 -------
