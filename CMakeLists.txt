@@ -6,6 +6,10 @@ if(NOT CMAKE_PROJECT_NAME OR "${CMAKE_PROJECT_NAME}" STREQUAL "asmtk")
   project(asmtk C CXX)
 endif()
 
+if(NOT DEFINED ASMJIT_EMBED)
+  set(ASMJIT_EMBED TRUE)
+endif()
+
 # =============================================================================
 # [AsmTK - Configuration]
 # =============================================================================
@@ -16,10 +20,6 @@ set(ASMJIT_DIR       "${ASMTK_DIR}/../asmjit"    CACHE PATH "Location of 'asmjit
 set(ASMTK_EMBED      FALSE          CACHE BOOLEAN "Embed 'asmtk' library (no targets)")
 set(ASMTK_STATIC     ${ASMTK_EMBED} CACHE BOOLEAN "Build 'asmtk' library as static")
 set(ASMTK_BUILD_TEST FALSE          CACHE BOOLEAN "Build 'asmtk_test' applications")
-
-if(NOT DEFINED ASMJIT_EMBED)
-  set(ASMJIT_EMBED TRUE)
-endif()
 
 # =============================================================================
 # [AsmTK - Project]

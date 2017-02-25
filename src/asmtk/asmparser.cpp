@@ -542,6 +542,7 @@ static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
   // Options of length '4':
   d0 += static_cast<uint32_t>(s[3]);
   if (len == 4) {
+    if (d0 == COMB_CHAR_4('l', 'o', 'c', 'k')) return X86Inst::kOptionLock;
     if (d0 == COMB_CHAR_4('r', 'e', 'p', 'z')) return X86Inst::kOptionRep;
     if (d0 == COMB_CHAR_4('r', 'e', 'p', 'e')) return X86Inst::kOptionRep;
     if (d0 == COMB_CHAR_4('l', 'o', 'n', 'g')) return X86Inst::kOptionLongForm;
