@@ -257,10 +257,14 @@ static uint32_t x86ParseSize(const uint8_t* s, size_t len) {
     // Sizes of length '5':
     d = (Utils::toLower<uint32_t>(s[0]) << 24);
     if (len == 5) {
+      // Check the most common first.
       if (d == COMB_CHAR_4('d', 0, 0, 0)) return 4;
       if (d == COMB_CHAR_4('q', 0, 0, 0)) return 8;
-      if (d == COMB_CHAR_4('t', 0, 0, 0)) return 10;
       if (d == COMB_CHAR_4('o', 0, 0, 0)) return 16;
+
+      // `fword` (aka far word, 16:32 m48 pointer) and `tword` (m80).
+      if (d == COMB_CHAR_4('f', 0, 0, 0)) return 6;
+      if (d == COMB_CHAR_4('t', 0, 0, 0)) return 10;
     }
 
     // Sizes of length '6':
@@ -522,7 +526,7 @@ MemOp:
 static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
   enum {
     kMinOptionLen = 3,
-    kMaxOptionLen = 5
+    kMaxOptionLen = 8
   };
 
   if (len < kMinOptionLen || len > kMaxOptionLen)
@@ -546,6 +550,8 @@ static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
     if (d0 == COMB_CHAR_4('r', 'e', 'p', 'z')) return X86Inst::kOptionRep;
     if (d0 == COMB_CHAR_4('r', 'e', 'p', 'e')) return X86Inst::kOptionRep;
     if (d0 == COMB_CHAR_4('l', 'o', 'n', 'g')) return X86Inst::kOptionLongForm;
+    if (d0 == COMB_CHAR_4('v', 'e', 'x', '3')) return X86Inst::kOptionVex3;
+    if (d0 == COMB_CHAR_4('e', 'v', 'e', 'x')) return X86Inst::kOptionEvex;
     return 0;
   }
 
@@ -553,18 +559,22 @@ static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
   if (len == 5) {
     uint32_t d1 = static_cast<uint32_t>(s[4]) << 24;
 
-    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'n') &&
-        d1 == COMB_CHAR_4('z', 0, 0, 0)) return X86Inst::kOptionRepnz;
-
-    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'n') &&
-        d1 == COMB_CHAR_4('e', 0, 0, 0)) return X86Inst::kOptionRepnz;
-
-    if (d0 == COMB_CHAR_4('s', 'h', 'o', 'r') &&
-        d1 == COMB_CHAR_4('t',  0 ,  0 ,  0 )) return X86Inst::kOptionShortForm;
-
-    if (d0 == COMB_CHAR_4('m', 'o', 'd', 'm') &&
-        d1 == COMB_CHAR_4('r',  0 ,  0 ,  0 )) return X86Inst::kOptionModMR;
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'n') && d1 == COMB_CHAR_4('e', 0, 0, 0)) return X86Inst::kOptionRepnz;
+    if (d0 == COMB_CHAR_4('r', 'e', 'p', 'n') && d1 == COMB_CHAR_4('z', 0, 0, 0)) return X86Inst::kOptionRepnz;
+    if (d0 == COMB_CHAR_4('s', 'h', 'o', 'r') && d1 == COMB_CHAR_4('t', 0, 0, 0)) return X86Inst::kOptionShortForm;
+    if (d0 == COMB_CHAR_4('m', 'o', 'd', 'm') && d1 == COMB_CHAR_4('r', 0, 0, 0)) return X86Inst::kOptionModMR;
     return 0;
+  }
+
+  // Options of length '8':
+  if (len == 8) {
+    uint32_t d1 = (static_cast<uint32_t>(s[4]) << 24) |
+                  (static_cast<uint32_t>(s[5]) << 16) |
+                  (static_cast<uint32_t>(s[6]) <<  8) |
+                  (static_cast<uint32_t>(s[7]) <<  0) ;
+
+    if (d0 == COMB_CHAR_4('x', 'a', 'c', 'q') && d1 == COMB_CHAR_4('u', 'i', 'r', 'e')) return X86Inst::kOptionXAcquire;
+    if (d0 == COMB_CHAR_4('x', 'r', 'e', 'l') && d1 == COMB_CHAR_4('e', 'a', 's', 'e')) return X86Inst::kOptionXRelease;
   }
 
   // Should be unreachable.
@@ -690,7 +700,7 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
   }
 }
 
-static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& opExtra, Operand_* opArray, uint32_t& opCount) {
+static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& extraOp, Operand_* opArray, uint32_t& opCount) {
   uint32_t i;
 
   if (instId >= kX86AliasStart) {
@@ -821,12 +831,11 @@ Error AsmParser::parse(const char* input, size_t len) {
 
       tType = _tokenizer.next(&tmp);
       if (tType == AsmToken::kColon) {
-        // Parse bound label.
+        // Parse label.
         Label dst;
         ASMJIT_PROPAGATE(asmHandleSymbol(*this, dst, token.data, token.len));
         ASMJIT_PROPAGATE(_emitter->bind(dst));
-
-        tType = _tokenizer.next(&token);
+        continue;
       }
       else {
         // Parse instruction.
@@ -836,7 +845,7 @@ Error AsmParser::parse(const char* input, size_t len) {
         uint32_t options = 0;
         ASMJIT_PROPAGATE(x86ParseInstruction(*this, instId, options, &token));
 
-        Operand opExtra;
+        Operand extraOp;
         Operand_ opArray[6];
         uint32_t opCount = 0;
 
@@ -859,15 +868,14 @@ Error AsmParser::parse(const char* input, size_t len) {
               if (tType == AsmToken::kSym || tType == AsmToken::kNSym) {
                 // TODO: Only accepts lowercase, must be fixed.
                 if (token.len == 2 && token.data[0] == 'k' && (uint8_t)(token.data[1] - '0') < 8) {
-                  if (opCount != 0 || !opExtra.isNone())
+                  if (opCount != 0 || !extraOp.isNone())
                     return DebugUtils::errored(kErrorInvalidState);
-                  opExtra = X86KReg(token.data[1] - '0');
-                  options |= X86Inst::kOptionOpExtra;
+                  extraOp = X86KReg(token.data[1] - '0');
                 }
                 else if (token.is('z')) {
-                  if (opCount != 0 || (options & X86Inst::kOptionKZ))
+                  if (opCount != 0 || (options & X86Inst::kOptionZMask))
                     return DebugUtils::errored(kErrorInvalidState);
-                  options |= X86Inst::kOptionKZ;
+                  options |= X86Inst::kOptionZMask;
                 }
                 else if (token.is('1', 't', 'o', 'x')) {
                   if (!opArray[opCount].isMem() || (options & X86Inst::kOption1ToX))
@@ -925,22 +933,12 @@ Error AsmParser::parse(const char* input, size_t len) {
           return DebugUtils::errored(kErrorInvalidState);
         }
 
-        for (uint32_t i = opCount; i < 4; i++)
-          opArray[i].reset();
-
-        ASMJIT_PROPAGATE(x86FixupInstruction(*this, instId, options, opExtra, opArray, opCount));
-        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, opExtra, opArray, opCount));
+        ASMJIT_PROPAGATE(x86FixupInstruction(*this, instId, options, extraOp, opArray, opCount));
+        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, extraOp, opArray, opCount));
 
         _emitter->setOptions(options);
-        if (!opExtra.isNone())
-          _emitter->setOpExtra(opExtra);
-
-        if (opCount > 4) {
-          _emitter->setOp4(opArray[4]);
-          if (opCount > 5) _emitter->setOp5(opArray[5]);
-        }
-
-        ASMJIT_PROPAGATE(_emitter->_emit(instId, opArray[0], opArray[1], opArray[2], opArray[3]));
+        _emitter->setExtraOp(extraOp);
+        ASMJIT_PROPAGATE(_emitter->emitOpArray(instId, opArray, opCount));
       }
     }
 

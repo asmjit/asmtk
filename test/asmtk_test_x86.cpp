@@ -114,6 +114,16 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xF7\x00\xFF\x00\x00\x00"                         , "test dword ptr [eax], 0xFF"),
   X86_PASS(0x0000000000000000, "\xFF\x10"                                         , "call [eax]"),
   X86_PASS(0x0000000000000000, "\xFF\x10"                                         , "call dword ptr [eax]"),
+  X86_PASS(0x0000000000000000, "\x66\xC5\x01"                                     , "lds ax , [ecx]"),
+  X86_PASS(0x0000000000000000, "\xC5\x01"                                         , "lds eax, [ecx]"),
+  X86_PASS(0x0000000000000000, "\x66\xC4\x01"                                     , "les ax , [ecx]"),
+  X86_PASS(0x0000000000000000, "\xC4\x01"                                         , "les eax, [ecx]"),
+  X86_PASS(0x0000000000000000, "\x66\x0F\xB4\x01"                                 , "lfs ax , [ecx]"),
+  X86_PASS(0x0000000000000000, "\x0F\xB4\x01"                                     , "lfs eax, [ecx]"),
+  X86_PASS(0x0000000000000000, "\x66\x0F\xB5\x01"                                 , "lgs ax , [ecx]"),
+  X86_PASS(0x0000000000000000, "\x0F\xB5\x01"                                     , "lgs eax, [ecx]"),
+  X86_PASS(0x0000000000000000, "\x66\x0F\xB2\x01"                                 , "lss ax , [ecx]"),
+  X86_PASS(0x0000000000000000, "\x0F\xB2\x01"                                     , "lss eax, [ecx]"),
 
   // 64-bit base instructions.
   X64_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1000"),
@@ -155,6 +165,27 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x48\xF7\x00\xFF\x00\x00\x00"                     , "test qword ptr [rax], 0xFF"),
   X64_PASS(0x0000000000000000, "\xFF\x10"                                         , "call [rax]"),
   X64_PASS(0x0000000000000000, "\xFF\x10"                                         , "call qword ptr [rax]"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\xB4\x01"                                 , "lfs ax , [rcx]"),
+  X64_PASS(0x0000000000000000, "\x0F\xB4\x01"                                     , "lfs eax, [rcx]"),
+  X64_PASS(0x0000000000000000, "\x48\x0F\xB4\x01"                                 , "lfs rax, [rcx]"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\xB5\x01"                                 , "lgs ax , [rcx]"),
+  X64_PASS(0x0000000000000000, "\x0F\xB5\x01"                                     , "lgs eax, [rcx]"),
+  X64_PASS(0x0000000000000000, "\x48\x0F\xB5\x01"                                 , "lgs rax, [rcx]"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\xB2\x01"                                 , "lss ax , [rcx]"),
+  X64_PASS(0x0000000000000000, "\x0F\xB2\x01"                                     , "lss eax, [rcx]"),
+  X64_PASS(0x0000000000000000, "\x48\x0F\xB2\x01"                                 , "lss rax, [rcx]"),
+
+  // 32-bit XACQUIRE|XRELEASE.
+  X86_PASS(0x0000000000000000, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
+  X86_PASS(0x0000000000000000, "\xF2\xF0\x01\x08"                                 , "xacquire lock add dword [eax], ecx"),
+  X86_PASS(0x0000000000000000, "\xF3\xF0\x01\x08"                                 , "xrelease lock add dword [eax], ecx"),
+
+
+  // 64-bit XACQUIRE|XRELEASE.
+  X64_PASS(0x0000000000000000, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
+  X64_PASS(0x0000000000000000, "\xF2\xF0\x48\x01\x08"                             , "xacquire lock add qword [rax], rcx"),
+  X64_PASS(0x0000000000000000, "\xF3\xF0\x48\x01\x08"                             , "xrelease lock add qword [rax], rcx"),
+
 
   // 32-bit BMI+ instructions.
   X86_PASS(0x0000000000000000, "\x66\xF3\x0F\xB8\xC2"                             , "popcnt ax, dx"),
@@ -300,6 +331,11 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x62\xF3\x7D\x08\x66\x3F\x01"                     , "vfpclassps k7, xmmword ptr [edi], 0x01"),
   X86_PASS(0x0000000000000000, "\x62\xF3\x7D\x28\x66\x3F\x01"                     , "vfpclassps k7, ymmword ptr [edi], 0x01"),
   X86_PASS(0x0000000000000000, "\x62\xF3\x7D\x48\x66\x3F\x01"                     , "vfpclassps k7, zmmword ptr [edi], 0x01"),
+  X86_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [eax + xmm0], xmm2"),
+  X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0 {k0}, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {k0}{z}, xmm1, xmm2"),
 
   // 64-bit AVX+ and AVX512+ instructions.
   X64_PASS(0x0000000000000000, "\xC5\xF9\x6E\x5A\x10"                             , "vmovd xmm3, dword ptr [rdx+0x10]"),
@@ -334,6 +370,11 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x08\x66\x27\x01"                     , "vfpclassps k4, xmmword ptr [rdi], 0x01"),
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x28\x66\x1F\x01"                     , "vfpclassps k3, ymmword ptr [rdi], 0x01"),
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x48\x66\x17\x01"                     , "vfpclassps k2, zmmword ptr [rdi], 0x01"),
+  X64_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [rax + xmm0], xmm2"),
+  X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
+  X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0 {k0}, xmm1, xmm2"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {k0}{z}, xmm1, xmm2"),
 
   // 32-bit jmp/call.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
@@ -497,10 +538,17 @@ static const TestEntry testEntries[] = {
   X86_FAIL(0x0000000000000000, "mov r15b, 0x0"),
   X86_FAIL(0x0000000000000000, "mov [eax], 1"),
   X86_FAIL(0x0000000000000000, "shr eax, 256"),
+  X64_FAIL(0x0000000000000000, "lfs al, [ecx]"),
   X86_FAIL(0x0000000000000000, "MOV EAX, DWORD PTR ]["),
   X86_FAIL(0x0000000000000000, "MOV EAX, DWORD PTR [RAX]"),
   X86_FAIL(0x0000000000000000, "MOV EAX, DWORD PTR [0xFFFFFFFFF]"),
+  X86_FAIL(0x0000000000000000, "lock add eax, ecx"),
+  X86_FAIL(0x0000000000000000, "lock add eax, [ecx]"),
   X86_FAIL(0x0000000000000000, "lock movd mm0, eax"),
+  X86_FAIL(0x0000000000000000, "lock lock add [eax], ecx"),
+  X86_FAIL(0x0000000000000000, "xacquire add [eax], ecx"),
+  X86_FAIL(0x0000000000000000, "xrelease add [eax], ecx"),
+  X86_FAIL(0x0000000000000000, "lock xacquire xrelease add [eax], ecx"),
 
   // 64-bit malformed input - should cause either parsing or validation error.
   X64_FAIL(0x0000000000001000, "short jmp 0x2000"),
@@ -513,7 +561,14 @@ static const TestEntry testEntries[] = {
   X64_FAIL(0x0000000000000000, "mov [rax], 1"),
   X64_FAIL(0x0000000000000000, "shr eax, 256"),
   X64_FAIL(0x0000000000000000, "shr rax, 256"),
-  X64_FAIL(0x0000000000000000, "lock movd mm0, eax")
+  X64_FAIL(0x0000000000000000, "lfs al, [rcx]"),
+  X64_FAIL(0x0000000000000000, "lock add rax, rcx"),
+  X64_FAIL(0x0000000000000000, "lock add rax, [rcx]"),
+  X64_FAIL(0x0000000000000000, "lock movd mm0, eax"),
+  X64_FAIL(0x0000000000000000, "lock lock add [rax], rcx"),
+  X64_FAIL(0x0000000000000000, "xacquire add [rax], rcx"),
+  X64_FAIL(0x0000000000000000, "xrelease add [rax], rcx"),
+  X64_FAIL(0x0000000000000000, "lock xacquire xrelease add [rax], rcx")
 };
 
 struct TestStats {
