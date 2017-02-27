@@ -391,12 +391,23 @@ MemOp:
     // Parse address prefix - 'abs'.
     type = parser._tokenizer.next(token);
     if (type == AsmToken::kSym) {
-      if (token->len == 3 &&
-          Utils::toLower<uint32_t>(token->data[0]) == 'a' &&
-          Utils::toLower<uint32_t>(token->data[1]) == 'b' &&
-          Utils::toLower<uint32_t>(token->data[2]) == 's') {
-        flags |= Mem::kSignatureMemAbsoluteFlag;
-        type = parser._tokenizer.next(token);
+      if (token->len == 3) {
+        uint32_t chars = (Utils::toLower<uint32_t>(token->data[0]) << 24) |
+                         (Utils::toLower<uint32_t>(token->data[1]) << 16) |
+                         (Utils::toLower<uint32_t>(token->data[2]) <<  8) ;
+
+        if (chars == COMB_CHAR_4('a', 'b', 's', 0)) {
+          flags |= Mem::kSignatureMemAbs;
+          type = parser._tokenizer.next(token);
+        }
+        else if (chars == COMB_CHAR_4('r', 'e', 'l', 0)) {
+          flags |= Mem::kSignatureMemRel;
+          type = parser._tokenizer.next(token);
+        }
+        else if (chars == COMB_CHAR_4('w', 'r', 't', 0)) {
+          flags |= Mem::kSignatureMemWrt;
+          type = parser._tokenizer.next(token);
+        }
       }
     }
 
