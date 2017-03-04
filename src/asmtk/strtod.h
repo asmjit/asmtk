@@ -5,11 +5,11 @@
 // Zlib - See LICENSE.md file in the package.
 
 // [Guard]
-#ifndef ASMTK_STRTOD_H
-#define ASMTK_STRTOD_H
+#ifndef _ASMTK_STRTOD_H
+#define _ASMTK_STRTOD_H
 
 // [Dependencies]
-#include <asmjit/base.h>
+#include "./globals.h"
 
 #if ASMJIT_OS_WINDOWS
 # define ASMTK_STRTOD_MSLOCALE
@@ -56,4 +56,4 @@ public:
 } // asmtk namespace
 
 // [Guard]
-#endif // ASMTK_STRTOD_H
+#endif // _ASMTK_STRTOD_H

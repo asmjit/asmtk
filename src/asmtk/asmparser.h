@@ -5,13 +5,12 @@
 // Zlib - See LICENSE.md file in the package.
 
 // [Guard]
-#ifndef ASMTK_ASMPARSER_H
-#define ASMTK_ASMPARSER_H
+#ifndef _ASMTK_ASMPARSER_H
+#define _ASMTK_ASMPARSER_H
 
 // [Dependencies]
 #include "./strtod.h"
 #include "./asmtokenizer.h"
-#include <asmjit/x86.h>
 
 namespace asmtk {
 
@@ -62,4 +61,4 @@ public:
 } // asmtk namespace
 
 // [Guard]
-#endif // ASMTK_ASMPARSER_H
+#endif // _ASMTK_ASMPARSER_H

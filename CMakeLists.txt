@@ -27,6 +27,7 @@ set(ASMTK_BUILD_TEST FALSE          CACHE BOOLEAN "Build 'asmtk_test' applicatio
 
 include("${ASMTK_DIR}/CxxProject.cmake")
 cxx_project(asmtk)
+cxx_detect_standard(ASMTK_PRIVATE_CFLAGS)
 
 include("${ASMJIT_DIR}/CMakeLists.txt")
 list(APPEND ASMTK_DEPS ${ASMJIT_LIBS})
@@ -49,6 +50,8 @@ cxx_add_source(asmtk ASMTK_SRC asmtk
   asmparser.h
   asmtokenizer.cpp
   asmtokenizer.h
+  elfdefs.h
+  globals.h
   strtod.h
 )
 

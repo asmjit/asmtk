@@ -5,12 +5,15 @@
 // Zlib - See LICENSE.md file in the package.
 
 // [Guard]
-#ifndef ASMTK_ASMTK_H
-#define ASMTK_ASMTK_H
+#ifndef _ASMTK_ASMTK_H
+#define _ASMTK_ASMTK_H
 
 // [Dependencies]
+#include "./globals.h"
+
 #include "./asmparser.h"
 #include "./asmtokenizer.h"
+#include "./elfdefs.h"
 
 // [Guard]
-#endif // ASMTK_ASMTK_H
+#endif // _ASMTK_ASMTK_H
