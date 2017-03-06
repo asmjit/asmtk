@@ -129,6 +129,10 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1000"),
   X64_PASS(0x0000000000000000, "\x0F\x20\xC0"                                     , "mov rax, cr0"),
   X64_PASS(0x0000000000000000, "\x44\x0F\x20\xC0"                                 , "mov rax, cr8"),
+  X64_PASS(0x0000000000000000, "\x48\x8B\x05\x00\x00\x00\x00"                     , "mov rax, [rip]"),
+  X64_PASS(0x0000000000000000, "\x4A\x8B\x04\x60"                                 , "mov rax, [rax + r12 * 2]"),
+  X64_PASS(0x0000000000000000, "\x4A\x8B\x04\x68"                                 , "mov rax, [rax + r13 * 2]"),
+  X64_PASS(0x0000000000000000, "\x4A\x8B\x84\x60\x00\x01\x00\x00"                 , "mov rax, [rax + r12 * 2 + 256]"),
   X64_PASS(0x0000000000000000, "\x0F\xBE\x07"                                     , "movsx eax, byte ptr [rdi]"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xBE\x07"                                 , "movsx rax, byte ptr [rdi]"),
   X64_PASS(0x0000000000000000, "\x0F\xBF\x07"                                     , "movsx eax, word ptr [rdi]"),
@@ -331,7 +335,10 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x62\xF3\x7D\x08\x66\x3F\x01"                     , "vfpclassps k7, xmmword ptr [edi], 0x01"),
   X86_PASS(0x0000000000000000, "\x62\xF3\x7D\x28\x66\x3F\x01"                     , "vfpclassps k7, ymmword ptr [edi], 0x01"),
   X86_PASS(0x0000000000000000, "\x62\xF3\x7D\x48\x66\x3F\x01"                     , "vfpclassps k7, zmmword ptr [edi], 0x01"),
+  X86_PASS(0x0000000000000000, "\xC4\xE2\xF9\x90\x04\x05\x00\x00\x00\x00"         , "vpgatherdq xmm0, [xmm0], xmm0"),
+  X86_PASS(0x0000000000000000, "\xC4\xE2\xFD\x91\x04\x05\x00\x00\x00\x00"         , "vpgatherqq ymm0, [ymm0], ymm0"),
   X86_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [eax + xmm0], xmm2"),
+
   X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
   X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0 {k0}, xmm1, xmm2"),
   X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
@@ -370,7 +377,12 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x08\x66\x27\x01"                     , "vfpclassps k4, xmmword ptr [rdi], 0x01"),
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x28\x66\x1F\x01"                     , "vfpclassps k3, ymmword ptr [rdi], 0x01"),
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x48\x66\x17\x01"                     , "vfpclassps k2, zmmword ptr [rdi], 0x01"),
+  X64_PASS(0x0000000000000000, "\xC4\xE2\xF9\x90\x04\x05\x00\x00\x00\x00"         , "vpgatherdq xmm0, [xmm0], xmm0"),
+  X64_PASS(0x0000000000000000, "\xC4\xE2\xFD\x91\x04\x05\x00\x00\x00\x00"         , "vpgatherqq ymm0, [ymm0], ymm0"),
   X64_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [rax + xmm0], xmm2"),
+  X64_PASS(0x0000000000000000, "\xC4\xE2\x69\x90\x44\x0D\x00"                     , "vpgatherdd xmm0, [rbp + xmm1], xmm2"),
+  X64_PASS(0x0000000000000000, "\xC4\xC2\x69\x90\x04\x0C"                         , "vpgatherdd xmm0, [r12 + xmm1], xmm2"),
+  X64_PASS(0x0000000000000000, "\xC4\xC2\x69\x90\x44\x0D\x00"                     , "vpgatherdd xmm0, [r13 + xmm1], xmm2"),
   X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
   X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0 {k0}, xmm1, xmm2"),
   X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
@@ -568,7 +580,8 @@ static const TestEntry testEntries[] = {
   X64_FAIL(0x0000000000000000, "lock lock add [rax], rcx"),
   X64_FAIL(0x0000000000000000, "xacquire add [rax], rcx"),
   X64_FAIL(0x0000000000000000, "xrelease add [rax], rcx"),
-  X64_FAIL(0x0000000000000000, "lock xacquire xrelease add [rax], rcx")
+  X64_FAIL(0x0000000000000000, "lock xacquire xrelease add [rax], rcx"),
+  X64_FAIL(0x0000000000000000, "vpgatherdd xmm0, [rip + xmm1], xmm2")
 };
 
 struct TestStats {
@@ -614,7 +627,7 @@ static bool runTests(TestStats& out, const TestEntry* entries, size_t count) {
 
     if (err) {
       if (!entry.mustPass) {
-        printf("[SUCCESS %s] '%s' -> '%s' (EXPECTED)\n", arch, entry.asmString, DebugUtils::errorAsString(err));
+        printf("[Success %s] '%s' -> '%s' (EXPECTED)\n", arch, entry.asmString, DebugUtils::errorAsString(err));
         out.passed++;
       }
       else {
@@ -626,7 +639,7 @@ static bool runTests(TestStats& out, const TestEntry* entries, size_t count) {
       CodeBuffer& buf = code.getSectionEntry(0)->getBuffer();
 
       if (entry.mustPass && buf.getLength() == entry.mcLength && ::memcmp(buf.getData(), entry.machineCode, entry.mcLength) == 0) {
-        printf("[SUCCESS %s] '%s' -> '", arch, entry.asmString);
+        printf("[Success %s] '%s' -> '", arch, entry.asmString);
         dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
         printf("'\n");
 

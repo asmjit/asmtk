@@ -483,6 +483,13 @@ MemOp:
         if (opType != AsmToken::kInvalid)
           return DebugUtils::errored(kErrorInvalidAddress);
 
+        // Reverse base and index if base is a vector register.
+        if (X86Reg::isVec(base)) {
+          if (index.isReg())
+            return DebugUtils::errored(kErrorInvalidAddress);
+          std::swap(base, index);
+        }
+
         if (base.isReg()) {
           if (!Utils::isInt32<int64_t>(static_cast<int64_t>(offset)) &&
               !Utils::isUInt32<int64_t>(static_cast<int64_t>(offset)))
