@@ -601,14 +601,14 @@ static uint32_t x86ParseOption(const uint8_t* s, size_t len) {
 
 static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
   if (len < 3)
-    return Globals::kInvalidInstId;
+    return Inst::kIdNone;
 
   uint32_t d0 = (static_cast<uint32_t>(s[0]) << 24) +
                 (static_cast<uint32_t>(s[1]) << 16) +
                 (static_cast<uint32_t>(s[2]) <<  8) ;
   if (len == 3) {
     if (d0 == COMB_CHAR_4('s', 'a', 'l', 0)) return X86Inst::kIdShl;
-    return Globals::kInvalidInstId;
+    return Inst::kIdNone;
   }
 
   d0 += (static_cast<uint32_t>(s[3]) << 0);
@@ -616,7 +616,7 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
     if (d0 == COMB_CHAR_4('i', 'n', 's', 'b')) return kX86AliasInsb;
     if (d0 == COMB_CHAR_4('i', 'n', 's', 'd')) return kX86AliasInsd;
     if (d0 == COMB_CHAR_4('i', 'n', 's', 'w')) return kX86AliasInsw;
-    return Globals::kInvalidInstId;
+    return Inst::kIdNone;
   }
 
   uint32_t d1 = (static_cast<uint32_t>(s[4]) << 24);
@@ -642,10 +642,10 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
       if (d1 == COMB_CHAR_4('b', 0, 0, 0)) return kX86AliasOutsb;
       if (d1 == COMB_CHAR_4('d', 0, 0, 0)) return kX86AliasOutsd;
       if (d1 == COMB_CHAR_4('w', 0, 0, 0)) return kX86AliasOutsw;
-      return Globals::kInvalidInstId;
+      return Inst::kIdNone;
     }
     else {
-      return Globals::kInvalidInstId;
+      return Inst::kIdNone;
     }
 
     if (d1 == COMB_CHAR_4('b', 0, 0, 0)) return base + 0;
@@ -653,7 +653,7 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
     if (d1 == COMB_CHAR_4('q', 0, 0, 0)) return base + 2;
     if (d1 == COMB_CHAR_4('w', 0, 0, 0)) return base + 3;
 
-    return Globals::kInvalidInstId;
+    return Inst::kIdNone;
   }
 
   d1 += static_cast<uint32_t>(s[5]) << 16;
@@ -661,7 +661,7 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t len) {
     if (d0 == COMB_CHAR_4('m', 'o', 'v', 'a') && d1 == COMB_CHAR_4('b', 's', 0, 0)) return kX86AliasMovabs;
   }
 
-  return Globals::kInvalidInstId;
+  return Inst::kIdNone;
 }
 
 static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, AsmToken* token) {
@@ -676,12 +676,12 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
 
     // Try to match instruction alias, as there are some tricky ones.
     instId = x86ParseAlias(lower, len);
-    if (instId == Globals::kInvalidInstId) {
+    if (instId == Inst::kIdNone) {
       // If that didn't work out, try to match instruction as defined by AsmJit.
       instId = X86Inst::getIdByName(reinterpret_cast<char*>(lower), len);
     }
 
-    if (instId == Globals::kInvalidInstId) {
+    if (instId == Inst::kIdNone) {
       // Maybe it's an option / prefix?
       uint32_t option = x86ParseOption(lower, len);
       if (!(option))
@@ -718,8 +718,11 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
   }
 }
 
-static Error x86FixupInstruction(AsmParser& parser, uint32_t& instId, uint32_t& options, Operand_& extraOp, Operand_* opArray, uint32_t& opCount) {
+static Error x86FixupInstruction(AsmParser& parser, Inst::Detail& detail, Operand_* opArray, uint32_t& opCount) {
   uint32_t i;
+
+  uint32_t& instId = detail.instId;
+  uint32_t& options = detail.options;
 
   if (instId >= kX86AliasStart) {
     X86Emitter* emitter = static_cast<X86Emitter*>(parser._emitter);
@@ -859,15 +862,13 @@ Error AsmParser::parse(const char* input, size_t len) {
         // Parse instruction.
         _tokenizer.back(&tmp);
 
-        uint32_t instId = 0;
-        uint32_t options = 0;
-        ASMJIT_PROPAGATE(x86ParseInstruction(*this, instId, options, &token));
+        Inst::Detail detail;
+        ASMJIT_PROPAGATE(x86ParseInstruction(*this, detail.instId, detail.options, &token));
 
-        Operand extraOp;
+        // Parse operands.
         Operand_ opArray[6];
         uint32_t opCount = 0;
 
-        // Parse operands.
         for (;;) {
           tType = _tokenizer.next(&token);
 
@@ -884,11 +885,14 @@ Error AsmParser::parse(const char* input, size_t len) {
             do {
               tType = _tokenizer.next(&token);
               if (tType == AsmToken::kSym || tType == AsmToken::kNSym) {
+                uint32_t& options = detail.options;
+
                 // TODO: Only accepts lowercase, must be fixed.
                 if (token.len == 2 && token.data[0] == 'k' && (uint8_t)(token.data[1] - '0') < 8) {
-                  if (opCount != 0 || !extraOp.isNone())
+                  RegOnly& extraReg = detail.extraReg;
+                  if (opCount != 0 || !extraReg.isNone())
                     return DebugUtils::errored(kErrorInvalidState);
-                  extraOp = X86KReg(token.data[1] - '0');
+                  extraReg.init(X86KReg(token.data[1] - '0'));
                 }
                 else if (token.is('z')) {
                   if (opCount != 0 || (options & X86Inst::kOptionZMask))
@@ -951,12 +955,12 @@ Error AsmParser::parse(const char* input, size_t len) {
           return DebugUtils::errored(kErrorInvalidState);
         }
 
-        ASMJIT_PROPAGATE(x86FixupInstruction(*this, instId, options, extraOp, opArray, opCount));
-        ASMJIT_PROPAGATE(X86Inst::validate(archType, instId, options, extraOp, opArray, opCount));
+        ASMJIT_PROPAGATE(x86FixupInstruction(*this, detail, opArray, opCount));
+        ASMJIT_PROPAGATE(Inst::validate(archType, detail, opArray, opCount));
 
-        _emitter->setOptions(options);
-        _emitter->setExtraOp(extraOp);
-        ASMJIT_PROPAGATE(_emitter->emitOpArray(instId, opArray, opCount));
+        _emitter->setOptions(detail.options);
+        _emitter->setExtraReg(detail.extraReg);
+        ASMJIT_PROPAGATE(_emitter->emitOpArray(detail.instId, opArray, opCount));
       }
     }
 
