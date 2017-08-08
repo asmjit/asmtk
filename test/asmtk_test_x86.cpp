@@ -139,6 +139,8 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x0F\xB5\x01"                                     , "lgs eax, [ecx]"),
   X86_PASS(0x0000000000000000, "\x66\x0F\xB2\x01"                                 , "lss ax , [ecx]"),
   X86_PASS(0x0000000000000000, "\x0F\xB2\x01"                                     , "lss eax, [ecx]"),
+  X86_PASS(0x0000000000000000, "\xC8\x01\x00\x02"                                 , "enter 1, 2"),
+  X86_PASS(0x0000000000000000, "\xC9"                                             , "leave"),
 
   // 64-bit base instructions.
   X64_PASS(0x0000000000000000, "\x8A\xE0"                                         , "mov ah, al"),
@@ -211,6 +213,9 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x66\x0F\xB2\x01"                                 , "lss ax , [rcx]"),
   X64_PASS(0x0000000000000000, "\x0F\xB2\x01"                                     , "lss eax, [rcx]"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xB2\x01"                                 , "lss rax, [rcx]"),
+  X64_PASS(0x0000000000000000, "\xC8\x01\x00\x02"                                 , "enter 1, 2"),
+  X64_PASS(0x0000000000000000, "\x40\xC8\x01\x00\x02"                             , "rex enter 1, 2"),
+  X64_PASS(0x0000000000000000, "\xC9"                                             , "leave"),
 
   // 32-bit XACQUIRE|XRELEASE.
   X86_PASS(0x0000000000000000, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
