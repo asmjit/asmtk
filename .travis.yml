@@ -33,7 +33,7 @@ install:
     fi
   - |
     mkdir -p deps/asmjit
-    git clone --depth=1 https://github.com/asmjit/asmjit.git deps/asmjit
+    git clone --depth=1 --branch next-wip https://github.com/asmjit/asmjit.git deps/asmjit
 
 before_script:
   - mkdir build
@@ -46,4 +46,5 @@ script:
   - cd build
   - make
   - cd ..
-  - ./build/asmtk_test_x86
+  - ./build/asmtk_test_x86parser
+  - ./build/asmtk_test_x86handler

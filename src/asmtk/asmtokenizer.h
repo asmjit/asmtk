@@ -14,8 +14,12 @@
 
 namespace asmtk {
 
+// ============================================================================
+// [asmtk::AsmToken]
+// ============================================================================
+
 struct AsmToken {
-  enum Type {
+  enum Type : uint32_t {
     kEnd,
     kNL,
     kSym,
@@ -54,8 +58,14 @@ struct AsmToken {
     return len == 5 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3 && data[4] == c4;
   }
 
+  inline void reset() {
+    type = kEnd;
+    data = nullptr;
+    len = 0;
+    u64 = 0;
+  }
+
   inline uint32_t setData(uint32_t type, const uint8_t* data, size_t len) {
-    //printf("TOKEN: %.*s\n", (int)len, data);
     this->data = data;
     this->len = len;
     this->type = type;
@@ -74,14 +84,33 @@ struct AsmToken {
     double f64;
     int64_t i64;
     uint64_t u64;
+    uint8_t valueBytes[8];
   };
 };
 
+// ============================================================================
+// [asmtk::AsmTokenizer]
+// ============================================================================
+
 class AsmTokenizer {
 public:
+  //! Tokenizer options.
+  enum ParseFlags : uint32_t {
+    kParseSymbol          = 0x00000001U, //!< Don't attempt to parse number (always parse symbol).
+    kParseDashes          = 0x00000002U  //!< Consider dashes as text in a parsed symbol.
+  };
+
+  //! Flags used during tokenization (cannot be used as options).
+  enum StateFlags : uint32_t {
+    kStateDotPrefix       = 0x10000000U, //!< Parsed '.' prefix.
+    kStateDollarPrefix    = 0x20000000U, //!< Parsed '$' prefix.
+    kStateNumberPrefix    = 0x40000000U, //!< Parsed number prefix [0b|0x].
+    kStateNumberSuffix    = 0x80000000U  //!< Parsed number suffix [b|o|q|h].
+  };
+
   AsmTokenizer();
-  uint32_t next(AsmToken* token);
-  inline void back(AsmToken* token) { _cur = token->data; }
+  uint32_t next(AsmToken* token, uint32_t flags = 0);
+  inline void putBack(AsmToken* token) { _cur = token->data; }
 
   inline void setInput(const uint8_t* input, size_t len) {
     _input = input;

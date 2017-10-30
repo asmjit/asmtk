@@ -87,10 +87,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // If we are done, you must detach the Assembler from CodeHolder or sync
-  // it, so its internal state and position is synced with CodeHolder.
-  code.sync();
-
   // Now you can print the code, which is stored in the first section (.text).
   CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
   dumpCode(buffer.getData(), buffer.getLength());

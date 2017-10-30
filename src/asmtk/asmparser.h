@@ -14,8 +14,6 @@
 
 namespace asmtk {
 
-using asmjit::Error;
-
 // ============================================================================
 // [asmtk::AsmParser]
 // ============================================================================
@@ -25,27 +23,66 @@ class AsmParser {
 public:
   typedef Error (ASMJIT_CDECL* UnknownSymbolHandler)(AsmParser* parser, asmjit::Operand* out, const char* name, size_t len);
 
-  AsmParser(asmjit::CodeEmitter* emitter);
-  ~AsmParser();
-
-  Error parse(const char* input, size_t len = asmjit::Globals::kInvalidIndex);
+  AsmParser(asmjit::CodeEmitter* emitter) noexcept;
+  ~AsmParser() noexcept;
 
   // --------------------------------------------------------------------------
   // [Accessors]
   // --------------------------------------------------------------------------
 
-  ASMJIT_INLINE asmjit::CodeEmitter* getEmitter() const { return _emitter; }
+  inline asmjit::CodeEmitter* getEmitter() const noexcept { return _emitter; }
 
-  ASMJIT_INLINE bool hasUnknownSymbolHandler() const { return _unknownSymbolHandler != NULL; }
+  // --------------------------------------------------------------------------
+  // [Input]
+  // --------------------------------------------------------------------------
 
-  ASMJIT_INLINE UnknownSymbolHandler getUnknownSymbolHandler() const { return _unknownSymbolHandler; }
-  ASMJIT_INLINE void* getUnknownSymbolHandlerData() const { return _unknownSymbolHandlerData; }
+  inline const char* getInput() const noexcept { return reinterpret_cast<const char*>(_tokenizer._input); }
+  inline bool setInput(const char* input, size_t len = asmjit::Globals::kNullTerminated) noexcept {
+    if (len == asmjit::Globals::kNullTerminated)
+      len = ::strlen(input);
 
-  ASMJIT_INLINE void setUnknownSymbolHandler(UnknownSymbolHandler handler, void* data = NULL) {
+    _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
+    _currentCommandOffset = 0;
+    _endOfInput = (len == 0);
+
+    return _endOfInput;
+  }
+
+  inline bool isEndOfInput() const noexcept { return _endOfInput; }
+  inline size_t getCurrentCommandOffset() const noexcept { return _currentCommandOffset; }
+
+  uint32_t nextToken(AsmToken* token, uint32_t flags = 0) noexcept;
+  void putTokenBack(AsmToken* token) noexcept;
+
+  // --------------------------------------------------------------------------
+  // [UnknownSymbolHandler]
+  // --------------------------------------------------------------------------
+
+  inline bool hasUnknownSymbolHandler() const noexcept { return _unknownSymbolHandler != nullptr; }
+
+  inline UnknownSymbolHandler getUnknownSymbolHandler() const noexcept { return _unknownSymbolHandler; }
+  inline void* getUnknownSymbolHandlerData() const noexcept { return _unknownSymbolHandlerData; }
+
+  inline void setUnknownSymbolHandler(UnknownSymbolHandler handler, void* data = nullptr) noexcept {
     _unknownSymbolHandler = handler;
     _unknownSymbolHandlerData = data;
   }
-  ASMJIT_INLINE void resetUnknownSymbolHandler() { setUnknownSymbolHandler((UnknownSymbolHandler)NULL, NULL); }
+
+  inline void resetUnknownSymbolHandler() {
+    setUnknownSymbolHandler((UnknownSymbolHandler)nullptr, nullptr);
+  }
+
+  // --------------------------------------------------------------------------
+  // [Parsing]
+  // --------------------------------------------------------------------------
+
+  //! Universal method that setups the input and then calls `parseLine()` until
+  //! the end is reached. It returns `kErrorOk` on success (which means that all
+  //! commands were parsed successfully), otherwise and error code describing
+  //! the problem.
+  Error parse(const char* input, size_t len = asmjit::Globals::kNullTerminated) noexcept;
+
+  Error parseCommand() noexcept;
 
   // --------------------------------------------------------------------------
   // [Members]
@@ -53,6 +90,9 @@ public:
 
   asmjit::CodeEmitter* _emitter;
   AsmTokenizer _tokenizer;
+
+  size_t _currentCommandOffset;
+  bool _endOfInput;
 
   UnknownSymbolHandler _unknownSymbolHandler;
   void* _unknownSymbolHandlerData;

@@ -1,47 +1,13 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "./asmtk.h"
+#include "./cmdline.h"
 
 using namespace asmjit;
 using namespace asmtk;
-
-class CmdLine {
-public:
-  CmdLine(int argc, const char* const* argv)
-    : argc(argc),
-      argv(argv) {}
-
-  bool hasKey(const char* key) const {
-    for (int i = 0; i < argc; i++)
-      if (::strcmp(argv[i], key) == 0)
-        return true;
-    return false;
-  }
-
-  const char* getKey(const char* key) const {
-    size_t keyLen = ::strlen(key);
-    size_t argLen = 0;
-
-    const char* arg = NULL;
-    for (int i = 0; i <= argc; i++) {
-      if (i == argc)
-        return NULL;
-
-      arg = argv[i];
-      argLen = ::strlen(arg);
-      if (argLen >= keyLen && ::memcmp(arg, key, keyLen) == 0)
-        break;
-    }
-
-    if (argLen > keyLen && arg[keyLen] == '=')
-      return arg + keyLen + 1;
-    else
-      return arg + keyLen;
-  }
-
-  int argc;
-  const char* const* argv;
-};
 
 static bool hexToU64(uint64_t& out, const char* src, size_t len) {
   uint64_t val = 0;
@@ -93,11 +59,11 @@ static bool isSpace(const char c) {
 static bool isCommand(const char* str, const char* cmd) {
   while (str[0] && isSpace(str[0])) str++;
 
-  size_t sLen = ::strlen(str);
+  size_t sLen = std::strlen(str);
   while (sLen && isSpace(str[sLen - 1])) sLen--;
 
-  size_t cLen = ::strlen(cmd);
-  return sLen == cLen && ::memcmp(str, cmd, sLen) == 0;
+  size_t cLen = std::strlen(cmd);
+  return sLen == cLen && std::memcmp(str, cmd, sLen) == 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -109,14 +75,14 @@ int main(int argc, char* argv[]) {
   uint64_t baseAddress = Globals::kNoBaseAddress;
 
   if (archArg) {
-    if (::strcmp(archArg, "x86") == 0) {
+    if (std::strcmp(archArg, "x86") == 0) {
       archType = ArchInfo::kTypeX86;
     }
-    else if (::strcmp(archArg, "x64") == 0) {
+    else if (std::strcmp(archArg, "x64") == 0) {
       archType = ArchInfo::kTypeX64;
     }
     else {
-      printf("Invalid --arch parameter\n");
+      std::printf("Invalid --arch parameter\n");
       return 1;
     }
   }
@@ -125,27 +91,27 @@ int main(int argc, char* argv[]) {
   }
 
   if (baseArg) {
-    size_t len = ::strlen(baseArg);
+    size_t len = std::strlen(baseArg);
     size_t maxLen = archType == ArchInfo::kTypeX64 ? 16 : 8;
 
     if (!len || len > maxLen || !hexToU64(baseAddress, baseArg, len)) {
-      printf("Invalid --base parameter\n");
+      std::printf("Invalid --base parameter\n");
       return 1;
     }
   }
 
-  printf("===============================================================\n");
-  printf("AsmTk [Assembler toolkit based on AsmJit]\n"                      );
-  printf("  - A simple command-line based instruction encoder\n"            );
-  printf("  - Architecture=%s [select by --arch=x86|x64]\n", archArg        );
-  printf("  - Base-Address=%s [select by --base=hex]\n", baseArg            );
-  printf("---------------------------------------------------------------\n");
-  printf("Input:\n"                                                         );
-  printf("  - Enter instruction and its operands to be encoded.\n"          );
-  printf("  - Enter '.clear' to clear everything.\n"                        );
-  printf("  - Enter '.print' to print the current code.\n"                  );
-  printf("  - Enter '' (empty string) to exit.\n"                           );
-  printf("===============================================================\n");
+  std::printf("===============================================================\n");
+  std::printf("AsmTk [Assembler toolkit based on AsmJit]\n"                      );
+  std::printf("  - A simple command-line based instruction encoder\n"            );
+  std::printf("  - Architecture=%s [select by --arch=x86|x64]\n", archArg        );
+  std::printf("  - Base-Address=%s [select by --base=hex]\n", baseArg            );
+  std::printf("---------------------------------------------------------------\n");
+  std::printf("Input:\n"                                                         );
+  std::printf("  - Enter instruction and its operands to be encoded.\n"          );
+  std::printf("  - Enter '.clear' to clear everything.\n"                        );
+  std::printf("  - Enter '.print' to print the current code.\n"                  );
+  std::printf("  - Enter '.exit' (or Ctrl+D) to exit.\n"                         );
+  std::printf("===============================================================\n");
 
   StringLogger logger;
   logger.addOptions(Logger::kOptionBinaryForm);
@@ -160,12 +126,26 @@ int main(int argc, char* argv[]) {
   AsmParser p(&a);
 
   char input[4096];
+  input[4095] = 0;
+
   for (;;) {
-    fgets(input, 4095, stdin);
-    if (input[0] == 0) break;
+    // fgets returns NULL on EOF.
+    if (std::fgets(input, 4095, stdin) == NULL)
+      break;
+
+    size_t len = std::strlen(input);
+    if (len > 0 && input[len - 1] == 0x0A)
+      input[--len] = 0;
+
+    if (len == 0)
+      continue;
+
+    if (isCommand(input, ".exit"))
+      break;
 
     if (isCommand(input, ".clear")) {
-      code.reset(false);  // Detaches everything.
+      // Detaches everything.
+      code.reset(false);
       code.init(ci);
       code.setLogger(&logger);
       code.attach(&a);
@@ -173,8 +153,6 @@ int main(int argc, char* argv[]) {
     }
 
     if (isCommand(input, ".print")) {
-      code.sync(); // First sync with the assembler.
-
       CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
       dumpCode(buffer.getData(), buffer.getLength());
       continue;
@@ -196,11 +174,10 @@ int main(int argc, char* argv[]) {
       }
 
       if (i < len)
-        printf("%.*s", (int)(len - i), log + i);
+        std::printf("%.*s", (int)(len - i), log + i);
     }
     else {
-      a.resetLastError();
-      fprintf(stdout, "ERROR: 0x%08X: %s\n", err, DebugUtils::errorAsString(err));
+      std::fprintf(stdout, "ERROR: 0x%08X: %s\n", err, DebugUtils::errorAsString(err));
     }
   }
 

@@ -3,23 +3,23 @@ cmake_minimum_required(VERSION 3.1)
 # Don't create a project if it was already created by another CMakeLists.txt.
 # This allows one library to embed another library without a project collision.
 if(NOT CMAKE_PROJECT_NAME OR "${CMAKE_PROJECT_NAME}" STREQUAL "asmtk")
-  project(asmtk C CXX)
+  project(asmtk CXX)
 endif()
 
-if(NOT DEFINED ASMJIT_EMBED)
-  set(ASMJIT_EMBED TRUE)
+if(NOT DEFINED ASMJIT_BUILD_EMBED)
+  set(ASMJIT_BUILD_EMBED TRUE)
 endif()
 
 # =============================================================================
 # [AsmTK - Configuration]
 # =============================================================================
 
-set(ASMTK_DIR        "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Location of 'asmtk'")
-set(ASMJIT_DIR       "${ASMTK_DIR}/../asmjit"    CACHE PATH "Location of 'asmjit'")
+set(ASMTK_DIR          "${CMAKE_CURRENT_LIST_DIR}" CACHE PATH "Location of 'asmtk'")
+set(ASMJIT_DIR         "${ASMTK_DIR}/../asmjit"    CACHE PATH "Location of 'asmjit'")
 
-set(ASMTK_EMBED      FALSE          CACHE BOOLEAN "Embed 'asmtk' library (no targets)")
-set(ASMTK_STATIC     ${ASMTK_EMBED} CACHE BOOLEAN "Build 'asmtk' library as static")
-set(ASMTK_BUILD_TEST FALSE          CACHE BOOLEAN "Build 'asmtk_test' applications")
+set(ASMTK_BUILD_EMBED  FALSE                       CACHE BOOLEAN "Embed 'asmtk' library (no targets)")
+set(ASMTK_BUILD_STATIC ${ASMTK_BUILD_EMBED}        CACHE BOOLEAN "Build 'asmtk' library as static")
+set(ASMTK_BUILD_TEST   FALSE                       CACHE BOOLEAN "Build 'asmtk_test' applications")
 
 # =============================================================================
 # [AsmTK - Project]
@@ -52,6 +52,7 @@ cxx_add_source(asmtk ASMTK_SRC asmtk
   asmtokenizer.h
   elfdefs.h
   globals.h
+  parserutils.h
   strtod.h
 )
 
@@ -59,19 +60,19 @@ cxx_add_source(asmtk ASMTK_SRC asmtk
 # [AsmTK - Targets]
 # =============================================================================
 
-if(NOT ASMTK_EMBED)
+if(NOT ASMTK_BUILD_EMBED)
   if(ASMTK_BUILD_TEST)
     set(ASMTK_TEST_CFLAGS
       ${ASMJIT_CFLAGS}
       ${CXX_DEFINE}ASMJIT_BUILD_X86
-      ${CXX_DEFINE}ASMJIT_EMBED
-      ${CXX_DEFINE}ASMTK_EMBED
-      ${CXX_DEFINE}ASMTK_TEST)
+      ${CXX_DEFINE}ASMJIT_BUILD_EMBED
+      ${CXX_DEFINE}ASMTK_BUILD_EMBED)
+    cxx_detect_standard(ASMTK_TEST_CFLAGS)
 
     set(ASMTK_SAMPLES_SRC
-      asmtk_test_cmd
-      asmtk_test_handler
-      asmtk_test_x86)
+      asmtk_test_x86cmd
+      asmtk_test_x86handler
+      asmtk_test_x86parser)
 
     foreach(_target ${ASMTK_SAMPLES_SRC})
       add_executable(${_target} ${ASMJIT_SRC} ${ASMTK_SRC} "${ASMTK_DIR}/test/${_target}.cpp")

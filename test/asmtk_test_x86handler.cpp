@@ -1,5 +1,8 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include <stdint.h>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+
 #include "./asmtk.h"
 
 using namespace asmjit;
@@ -8,15 +11,14 @@ using namespace asmtk;
 static Error ASMJIT_CDECL unknownSymbolHandler(AsmParser* parser, Operand* dst, const char* name, size_t len) {
   void* data = parser->getUnknownSymbolHandlerData();
 
-  printf("Unknown symbol handler called on symbol '%.*s' (data %p)\n",
-    static_cast<int>(len), name, data);
+  std::printf("SymbolHandler called on symbol '%.*s' (data %p)\n", int(len), name, data);
 
-  if (len == 5 && ::memcmp(name, "TestA", 5) == 0) {
+  if (len == 5 && std::memcmp(name, "TestA", 5) == 0) {
     *dst = x86::rcx;
     return kErrorOk;
   }
 
-  if (len == 5 && ::memcmp(name, "TestB", 5) == 0) {
+  if (len == 5 && std::memcmp(name, "TestB", 5) == 0) {
     *dst = imm(0x4000);
     return kErrorOk;
   }
@@ -39,7 +41,7 @@ int main(int argc, char* argv[]) {
   CodeHolder code;
   Error err = code.init(ci);
   if (err) {
-    printf("[FAILURE] CodeHolder.init(): %s\n", DebugUtils::errorAsString(err));
+    std::printf("[FAILURE] CodeHolder.init(): %s\n", DebugUtils::errorAsString(err));
     return 1;
   }
 
@@ -49,19 +51,15 @@ int main(int argc, char* argv[]) {
   AsmParser parser(&a);
   parser.setUnknownSymbolHandler(unknownSymbolHandler);
 
-  err = parser.parse(
-    "mov rax, TestA\n"
-    "call TestB");
-
-  // Sync Assembler with CodeHolder.
-  code.sync();
+  err = parser.parse("mov rax, TestA\n"
+                     "call TestB\n");
 
   if (err) {
-    printf("[FAILURE] AsmParser.parse(): %s\n", DebugUtils::errorAsString(err));
+    std::printf("[FAILURE] AsmParser.parse(): %s\n", DebugUtils::errorAsString(err));
     return 1;
   }
   else {
-    printf("[SUCCESS]\n");
+    std::printf("[SUCCESS]\n");
     return 0;
   }
 }
