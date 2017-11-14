@@ -20,7 +20,7 @@ struct TestEntry {
 };
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
-  ASMJIT_UINT64_C(BASE),                           \
+  BASE,                                            \
   ArchInfo::kTypeX86,                              \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
@@ -30,7 +30,7 @@ struct TestEntry {
 }
 
 #define X86_FAIL(BASE, ASM_STRING) {               \
-  ASMJIT_UINT64_C(BASE),                           \
+  BASE,                                            \
   ArchInfo::kTypeX86,                              \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
@@ -40,7 +40,7 @@ struct TestEntry {
 }
 
 #define X64_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
-  ASMJIT_UINT64_C(BASE),                           \
+  BASE,                                            \
   ArchInfo::kTypeX64,                              \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
@@ -50,7 +50,7 @@ struct TestEntry {
 }
 
 #define X64_FAIL(BASE, ASM_STRING) {               \
-  ASMJIT_UINT64_C(BASE),                           \
+  BASE,                                            \
   ArchInfo::kTypeX64,                              \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
@@ -347,6 +347,8 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x66\x0F\x3A\x41\xC1\x00"                         , "dppd xmm0, xmm1, 0"),
   X86_PASS(0x0000000000000000, "\xF3\x0F\x2D\xC1"                                 , "cvtss2si eax, xmm1"),
   X86_PASS(0x0000000000000000, "\xF2\x0F\x2D\xC1"                                 , "cvtsd2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xF3\x0F\x2A\xC2"                                 , "cvtsi2ss xmm0, edx"),
+  X86_PASS(0x0000000000000000, "\xF2\x0F\x2A\xC2"                                 , "cvtsi2sd xmm0, edx"),
 
   // 64-bit MMX+ and SSE+ instructions.
   X64_PASS(0x0000000000000000, "\x0F\x6F\xC1"                                     , "movq mm0, mm1"),
@@ -373,6 +375,10 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\xF3\x48\x0F\x2D\xC1"                             , "cvtss2si rax, xmm1"),
   X64_PASS(0x0000000000000000, "\xF2\x0F\x2D\xC1"                                 , "cvtsd2si eax, xmm1"),
   X64_PASS(0x0000000000000000, "\xF2\x48\x0F\x2D\xC1"                             , "cvtsd2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xF3\x0F\x2A\xC2"                                 , "cvtsi2ss xmm0, edx"),
+  X64_PASS(0x0000000000000000, "\xF3\x48\x0F\x2A\xC2"                             , "cvtsi2ss xmm0, rdx"),
+  X64_PASS(0x0000000000000000, "\xF2\x0F\x2A\xC2"                                 , "cvtsi2sd xmm0, edx"),
+  X64_PASS(0x0000000000000000, "\xF2\x48\x0F\x2A\xC2"                             , "cvtsi2sd xmm0, rdx"),
 
   // 32-bit AVX+ and AVX512+ instructions.
   X86_PASS(0x0000000000000000, "\xC5\xF9\x6E\x5A\x10"                             , "vmovd xmm3, dword ptr [edx+0x10]"),
@@ -386,12 +392,15 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x62\xF1\x7D\x08\x7E\xC0"                         , "evex vmovd eax, xmm0"),
   X86_PASS(0x0000000000000000, "\xC5\xF5\xFD\xC7"                                 , "vpaddw ymm0, ymm1, ymm7"),
   X86_PASS(0x0000000000000000, "\xC4\xE3\x71\x41\xC2\x00"                         , "vdppd xmm0, xmm1, xmm2, 0"),
-  X86_PASS(0x0000000000000000, "\x62\xF1\xF5\xD9\x58\x00"                         , "vaddpd zmm0 {k1}{z}, zmm1, [eax] {1tox}"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\xF5\xD9\x58\x00"                         , "vaddpd zmm0 {k1}{z}, zmm1, [eax] {1to8}"),
   X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
   X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
   X86_PASS(0x0000000000000000, "\x62\xF1\x74\x89\x58\xC2"                         , "vaddps xmm0 {k1}{z}, xmm1, xmm2"),
-  X86_PASS(0x0000000000000000, "\xC5\xFA\x2D\xC1"                                 , "vcvtss2si eax,xmm1"),
-  X86_PASS(0x0000000000000000, "\xC5\xFB\x2D\xC1"                                 , "vcvtsd2si eax,xmm1"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x6C\x5F\xC2\x54\x98\x04\x0F"             , "vcmpps k2 {k7}, zmm2, dword ptr [eax+ebx*4+256] {1to16}, 15"),
+  X86_PASS(0x0000000000000000, "\xC5\xFA\x2D\xC1"                                 , "vcvtss2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xC5\xFB\x2D\xC1"                                 , "vcvtsd2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xC5\xF2\x2A\xC2"                                 , "vcvtsi2ss xmm0, xmm1, edx"),
+  X86_PASS(0x0000000000000000, "\xC5\xF3\x2A\xC2"                                 , "vcvtsi2sd xmm0, xmm1, edx"),
   X86_PASS(0x0000000000000000, "\xC5\xFB\xE6\x3B"                                 , "vcvtpd2dq xmm7, xmmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\xC5\xFF\xE6\x3B"                                 , "vcvtpd2dq xmm7, ymmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\xC5\xF9\x5A\x3B"                                 , "vcvtpd2ps xmm7, xmmword ptr [ebx]"),
@@ -442,13 +451,17 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x08\x7E\xC0"                         , "evex vmovq rax, xmm0"),
   X64_PASS(0x0000000000000000, "\xC4\x41\x35\xFD\xC7"                             , "vpaddw ymm8, ymm9, ymm15"),
   X64_PASS(0x0000000000000000, "\xC4\x43\x21\x41\xD4\x00"                         , "vdppd xmm10, xmm11, xmm12, 0"),
-  X64_PASS(0x0000000000000000, "\x62\x71\xB5\xD9\x58\x08"                         , "vaddpd zmm9 {k1}{z}, zmm9, [rax] {1tox}"),
+  X64_PASS(0x0000000000000000, "\x62\x71\xB5\xD9\x58\x08"                         , "vaddpd zmm9 {k1}{z}, zmm9, [rax] {1to8}"),
   X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
   X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
-  X64_PASS(0x0000000000000000, "\xC5\xFA\x2D\xC1"                                 , "vcvtss2si eax,xmm1"),
-  X64_PASS(0x0000000000000000, "\xC4\xE1\xFA\x2D\xC1"                             , "vcvtss2si rax,xmm1"),
-  X64_PASS(0x0000000000000000, "\xC5\xFB\x2D\xC1"                                 , "vcvtsd2si eax,xmm1"),
-  X64_PASS(0x0000000000000000, "\xC4\xE1\xFB\x2D\xC1"                             , "vcvtsd2si rax,xmm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xFA\x2D\xC1"                                 , "vcvtss2si eax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xFA\x2D\xC1"                             , "vcvtss2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xFB\x2D\xC1"                                 , "vcvtsd2si eax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xFB\x2D\xC1"                             , "vcvtsd2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xF2\x2A\xC2"                                 , "vcvtsi2ss xmm0, xmm1, edx"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xF2\x2A\xC2"                             , "vcvtsi2ss xmm0, xmm1, rdx"),
+  X64_PASS(0x0000000000000000, "\xC5\xF3\x2A\xC2"                                 , "vcvtsi2sd xmm0, xmm1, edx"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xF3\x2A\xC2"                             , "vcvtsi2sd xmm0, xmm1, rdx"),
   X64_PASS(0x0000000000000000, "\xC5\x7B\xE6\x3B"                                 , "vcvtpd2dq xmm15, xmmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\xC5\x7F\xE6\x3B"                                 , "vcvtpd2dq xmm15, ymmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\xC5\x79\x5A\x3B"                                 , "vcvtpd2ps xmm15, xmmword ptr [rbx]"),
@@ -483,6 +496,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\x01\x95\x50\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28, {ru-sae}"),
   X64_PASS(0x0000000000000000, "\x62\x01\x95\x70\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28  {rz-sae}"),
   X64_PASS(0x0000000000000000, "\x62\x01\x95\x70\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28, {rz-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x6C\x5F\xC2\x54\x98\x04\x0F"             , "vcmpps k2 {k7}, zmm2, dword ptr [rax+rbx*4+256] {1to16}, 15"),
   X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x58\xC2\xC1\x00"                     , "vcmppd k0, zmm0, zmm1, 0x00, {sae}"),
   X64_PASS(0x0000000000000000, "\x62\x01\xFD\x18\x2E\xF5"                         , "vucomisd xmm30, xmm29  {sae}"),
   X64_PASS(0x0000000000000000, "\x62\x01\xFD\x18\x2E\xF5"                         , "vucomisd xmm30, xmm29, {sae}"),

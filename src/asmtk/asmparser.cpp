@@ -21,13 +21,7 @@ enum X86AsmLimits : uint32_t {
   kX86MaxRegLen = 5,
 
   kX86MinSizeLen = 4,
-  kX86MaxSizeLen = 7,
-
-  kX86MinInstOptionLen = 3,
-  kX86MaxInstOptionLen = 8,
-
-  kX86MinAvx512OptionLen = 3,
-  kX86MaxAvx512OptionLen = 6
+  kX86MaxSizeLen = 7
 };
 
 // ============================================================================
@@ -600,15 +594,18 @@ MemOp:
 }
 
 static uint32_t x86ParseInstOption(const uint8_t* s, size_t len) noexcept {
+  constexpr uint32_t kX86MinInstOptionLen = 3;
+  constexpr uint32_t kX86MaxInstOptionLen = 8;
+
   if (len < kX86MinInstOptionLen || len > kX86MaxInstOptionLen)
     return 0;
 
   ParserUtils::WordParser word;
+
+  // Options of length '3':
   word.addLowercasedChar(s, 0);
   word.addLowercasedChar(s, 1);
   word.addLowercasedChar(s, 2);
-
-  // Options of length '3':
   if (len == 3) {
     if (word.test('r', 'e', 'p')) return X86Inst::kOptionRep;
     if (word.test('r', 'e', 'x')) return X86Inst::kOptionRex;
@@ -651,46 +648,68 @@ static uint32_t x86ParseInstOption(const uint8_t* s, size_t len) noexcept {
 }
 
 static uint32_t x86ParseAvx512Option(const uint8_t* s, size_t len) noexcept {
+  constexpr uint32_t kX86MinAvx512OptionLen = 3;
+  constexpr uint32_t kX86MaxAvx512OptionLen = 6;
+
   if (len < kX86MinAvx512OptionLen || len > kX86MaxAvx512OptionLen)
     return 0;
 
   ParserUtils::WordParser word;
+
+  // Options of length '3':
   word.addLowercasedChar(s, 0);
   word.addLowercasedChar(s, 1);
   word.addLowercasedChar(s, 2);
-
-  // Options of length '3':
   if (len == 3) {
     if (word.test('s', 'a', 'e')) return X86Inst::kOptionSAE;
     return 0;
   }
 
-  // Options of length '4':
-  word.addLowercasedChar(s, 3);
-  if (len == 4) {
-    if (word.test('1', 't', 'o', 'x')) return X86Inst::kOption1ToX;
-    if (word.test('1', 't', 'o', '2')) return X86Inst::kOption1ToX;
-    if (word.test('1', 't', 'o', '4')) return X86Inst::kOption1ToX;
-    if (word.test('1', 't', 'o', '8')) return X86Inst::kOption1ToX;
+  if (len < 6)
     return 0;
-  }
-
-  // Options of length '5':
-  word.addLowercasedChar(s, 4);
-  if (len == 5) {
-    if (word.test('1', 't', 'o', '1', '6')) return X86Inst::kOption1ToX;
-    if (word.test('1', 't', 'o', '3', '2')) return X86Inst::kOption1ToX;
-    if (word.test('1', 't', 'o', '6', '4')) return X86Inst::kOption1ToX;
-    return 0;
-  }
 
   // Options of length '6':
+  word.addLowercasedChar(s, 3);
+  word.addLowercasedChar(s, 4);
   word.addLowercasedChar(s, 5);
   if (len == 6) {
     if (word.test('r', 'n', '-', 's', 'a', 'e')) return X86Inst::kOptionER | X86Inst::kOptionRN_SAE;
     if (word.test('r', 'd', '-', 's', 'a', 'e')) return X86Inst::kOptionER | X86Inst::kOptionRD_SAE;
     if (word.test('r', 'u', '-', 's', 'a', 'e')) return X86Inst::kOptionER | X86Inst::kOptionRU_SAE;
     if (word.test('r', 'z', '-', 's', 'a', 'e')) return X86Inst::kOptionER | X86Inst::kOptionRZ_SAE;
+    return 0;
+  }
+
+  return 0;
+}
+
+static uint32_t x86ParseAvx512Broadcast(const uint8_t* s, size_t len) noexcept {
+  constexpr uint32_t kX86MinBcstLen = 4;
+  constexpr uint32_t kX86MaxBcstLen = 5;
+
+  if (len < kX86MinBcstLen || len > kX86MaxBcstLen)
+    return 0;
+
+  ParserUtils::WordParser word;
+
+  // Broadcast option of length '4':
+  word.addLowercasedChar(s, 0);
+  word.addLowercasedChar(s, 1);
+  word.addLowercasedChar(s, 2);
+  word.addLowercasedChar(s, 3);
+  if (len == 4) {
+    if (word.test('1', 't', 'o', '2')) return X86Mem::kBroadcast1To2;
+    if (word.test('1', 't', 'o', '4')) return X86Mem::kBroadcast1To4;
+    if (word.test('1', 't', 'o', '8')) return X86Mem::kBroadcast1To8;
+    return 0;
+  }
+
+  // Broadcast option of length '5':
+  word.addLowercasedChar(s, 4);
+  if (len == 5) {
+    if (word.test('1', 't', 'o', '1', '6')) return X86Mem::kBroadcast1To16;
+    if (word.test('1', 't', 'o', '3', '2')) return X86Mem::kBroadcast1To32;
+    if (word.test('1', 't', 'o', '6', '4')) return X86Mem::kBroadcast1To64;
     return 0;
   }
 
@@ -964,9 +983,8 @@ static Error x86FixupInstruction(AsmParser& parser, Inst::Detail& detail, Operan
 
 Error AsmParser::parse(const char* input, size_t len) noexcept {
   setInput(input, len);
-  while (!isEndOfInput()) {
+  while (!isEndOfInput())
     ASMJIT_PROPAGATE(parseCommand());
-  }
   return kErrorOk;
 }
 
@@ -1044,8 +1062,9 @@ Error AsmParser::parseCommand() noexcept {
       ASMJIT_PROPAGATE(x86ParseInstruction(*this, detail.instId, detail.options, &token));
 
       // Parse operands.
-      Operand_ operands[6];
       uint32_t count = 0;
+      Operand_ operands[6];
+      X86Mem* memOp = nullptr;
 
       for (;;) {
         tType = nextToken(&token);
@@ -1089,6 +1108,9 @@ Error AsmParser::parseCommand() noexcept {
           // Parse operand.
           ASMJIT_PROPAGATE(x86ParseOperand(*this, operands[count], &token));
 
+          if (operands[count].isMem())
+            memOp = static_cast<X86Mem*>(&operands[count]);
+
           // Parse {AVX-512} option(s) immediately next to the operand.
           tType = nextToken(&token);
           if (tType == AsmToken::kLCurl) {
@@ -1127,13 +1149,21 @@ Error AsmParser::parseCommand() noexcept {
               }
               else {
                 uint32_t option = x86ParseAvx512Option(str, len);
-                if (!option)
-                  return DebugUtils::errored(kErrorInvalidOption);
+                if (option) {
+                  if (options & option)
+                    return DebugUtils::errored(kErrorOptionAlreadyDefined);
+                  options |= option;
+                }
+                else {
+                  uint32_t bcst = x86ParseAvx512Broadcast(str, len);
+                  if (!bcst)
+                    return DebugUtils::errored(kErrorInvalidOption);
 
-                if (options & option)
-                  return DebugUtils::errored(kErrorOptionAlreadyDefined);
+                  if (bcst && (!memOp || memOp->hasBroadcast()))
+                    return DebugUtils::errored(kErrorInvalidBroadcast);
 
-                options |= option;
+                  memOp->setBroadcast(bcst);
+                }
               }
 
               tType = nextToken(&token);
