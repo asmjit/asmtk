@@ -8,17 +8,17 @@
 using namespace asmjit;
 using namespace asmtk;
 
-static Error ASMJIT_CDECL unknownSymbolHandler(AsmParser* parser, Operand* dst, const char* name, size_t len) {
-  void* data = parser->getUnknownSymbolHandlerData();
+static Error ASMJIT_CDECL unknownSymbolHandler(AsmParser* parser, Operand* dst, const char* name, size_t size) {
+  void* data = parser->unknownSymbolHandlerData();
 
-  std::printf("SymbolHandler called on symbol '%.*s' (data %p)\n", int(len), name, data);
+  std::printf("SymbolHandler called on symbol '%.*s' (data %p)\n", int(size), name, data);
 
-  if (len == 5 && std::memcmp(name, "TestA", 5) == 0) {
+  if (size == 5 && std::memcmp(name, "TestA", 5) == 0) {
     *dst = x86::rcx;
     return kErrorOk;
   }
 
-  if (len == 5 && std::memcmp(name, "TestB", 5) == 0) {
+  if (size == 5 && std::memcmp(name, "TestB", 5) == 0) {
     *dst = imm(0x4000);
     return kErrorOk;
   }
@@ -32,10 +32,10 @@ static Error ASMJIT_CDECL unknownSymbolHandler(AsmParser* parser, Operand* dst, 
 int main(int argc, char* argv[]) {
   // Initialize CodeInfo with proper architecture and base-address.
   CodeInfo ci;
-  ci.init(ArchInfo::kTypeX64, 0, uint64_t(0x1000));
+  ci.init(ArchInfo::kIdX64, 0, uint64_t(0x1000));
 
   FileLogger logger(stdout);
-  logger.addOptions(Logger::kOptionBinaryForm);
+  logger.addFlags(FormatOptions::kFlagMachineCode);
 
   // Initialize CodeHolder.
   CodeHolder code;
@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
   }
 
   code.setLogger(&logger);
-  X86Assembler a(&code);
+  x86::Assembler a(&code);
 
   AsmParser parser(&a);
   parser.setUnknownSymbolHandler(unknownSymbolHandler);

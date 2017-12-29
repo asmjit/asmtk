@@ -16,9 +16,9 @@ public:
     return false;
   }
 
-  const char* getKey(const char* key) const {
-    std::size_t keyLen = std::strlen(key);
-    std::size_t argLen = 0;
+  const char* valueOf(const char* key) const {
+    std::size_t keySize = std::strlen(key);
+    std::size_t argSize = 0;
 
     const char* arg = NULL;
     for (int i = 0; i <= argc; i++) {
@@ -26,15 +26,15 @@ public:
         return NULL;
 
       arg = argv[i];
-      argLen = std::strlen(arg);
-      if (argLen >= keyLen && std::memcmp(arg, key, keyLen) == 0)
+      argSize = std::strlen(arg);
+      if (argSize >= keySize && std::memcmp(arg, key, keySize) == 0)
         break;
     }
 
-    if (argLen > keyLen && arg[keyLen] == '=')
-      return arg + keyLen + 1;
+    if (argSize > keySize && arg[keySize] == '=')
+      return arg + keySize + 1;
     else
-      return arg + keyLen;
+      return arg + keySize;
   }
 
   int argc;

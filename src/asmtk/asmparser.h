@@ -21,35 +21,35 @@ namespace asmtk {
 //! Asm parser.
 class AsmParser {
 public:
-  typedef Error (ASMJIT_CDECL* UnknownSymbolHandler)(AsmParser* parser, asmjit::Operand* out, const char* name, size_t len);
+  typedef Error (ASMJIT_CDECL* UnknownSymbolHandler)(AsmParser* parser, asmjit::Operand* out, const char* name, size_t size);
 
-  AsmParser(asmjit::CodeEmitter* emitter) noexcept;
+  AsmParser(asmjit::BaseEmitter* emitter) noexcept;
   ~AsmParser() noexcept;
 
   // --------------------------------------------------------------------------
   // [Accessors]
   // --------------------------------------------------------------------------
 
-  inline asmjit::CodeEmitter* getEmitter() const noexcept { return _emitter; }
+  inline asmjit::BaseEmitter* emitter() const noexcept { return _emitter; }
 
   // --------------------------------------------------------------------------
   // [Input]
   // --------------------------------------------------------------------------
 
-  inline const char* getInput() const noexcept { return reinterpret_cast<const char*>(_tokenizer._input); }
-  inline bool setInput(const char* input, size_t len = asmjit::Globals::kNullTerminated) noexcept {
-    if (len == asmjit::Globals::kNullTerminated)
-      len = ::strlen(input);
+  inline const char* input() const noexcept { return reinterpret_cast<const char*>(_tokenizer._input); }
+  inline bool setInput(const char* input, size_t size = asmjit::Globals::kNullTerminated) noexcept {
+    if (size == asmjit::Globals::kNullTerminated)
+      size = ::strlen(input);
 
-    _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), len);
+    _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), size);
     _currentCommandOffset = 0;
-    _endOfInput = (len == 0);
+    _endOfInput = (size == 0);
 
     return _endOfInput;
   }
 
   inline bool isEndOfInput() const noexcept { return _endOfInput; }
-  inline size_t getCurrentCommandOffset() const noexcept { return _currentCommandOffset; }
+  inline size_t currentCommandOffset() const noexcept { return _currentCommandOffset; }
 
   uint32_t nextToken(AsmToken* token, uint32_t flags = 0) noexcept;
   void putTokenBack(AsmToken* token) noexcept;
@@ -58,10 +58,8 @@ public:
   // [UnknownSymbolHandler]
   // --------------------------------------------------------------------------
 
-  inline bool hasUnknownSymbolHandler() const noexcept { return _unknownSymbolHandler != nullptr; }
-
-  inline UnknownSymbolHandler getUnknownSymbolHandler() const noexcept { return _unknownSymbolHandler; }
-  inline void* getUnknownSymbolHandlerData() const noexcept { return _unknownSymbolHandlerData; }
+  inline UnknownSymbolHandler unknownSymbolHandler() const noexcept { return _unknownSymbolHandler; }
+  inline void* unknownSymbolHandlerData() const noexcept { return _unknownSymbolHandlerData; }
 
   inline void setUnknownSymbolHandler(UnknownSymbolHandler handler, void* data = nullptr) noexcept {
     _unknownSymbolHandler = handler;
@@ -80,7 +78,7 @@ public:
   //! the end is reached. It returns `kErrorOk` on success (which means that all
   //! commands were parsed successfully), otherwise and error code describing
   //! the problem.
-  Error parse(const char* input, size_t len = asmjit::Globals::kNullTerminated) noexcept;
+  Error parse(const char* input, size_t size = asmjit::Globals::kNullTerminated) noexcept;
 
   Error parseCommand() noexcept;
 
@@ -88,7 +86,7 @@ public:
   // [Members]
   // --------------------------------------------------------------------------
 
-  asmjit::CodeEmitter* _emitter;
+  asmjit::BaseEmitter* _emitter;
   AsmTokenizer _tokenizer;
 
   size_t _currentCommandOffset;

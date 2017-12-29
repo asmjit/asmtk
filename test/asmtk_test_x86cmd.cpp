@@ -9,9 +9,9 @@
 using namespace asmjit;
 using namespace asmtk;
 
-static bool hexToU64(uint64_t& out, const char* src, size_t len) {
+static bool hexToU64(uint64_t& out, const char* src, size_t size) {
   uint64_t val = 0;
-  for (size_t i = 0; i < len; i++) {
+  for (size_t i = 0; i < size; i++) {
     uint32_t c = src[i];
     if (c >= '0' && c <= '9')
       c = c - '0';
@@ -28,14 +28,14 @@ static bool hexToU64(uint64_t& out, const char* src, size_t len) {
   return true;
 }
 
-static void dumpCode(const uint8_t* buf, size_t len) {
+static void dumpCode(const uint8_t* buf, size_t size) {
   enum { kCharsPerLine = 39 };
   char hex[kCharsPerLine * 2 + 1];
 
   size_t i = 0;
-  while (i < len) {
+  while (i < size) {
     size_t j = 0;
-    size_t end = len - i < kCharsPerLine ? len - i : size_t(kCharsPerLine);
+    size_t end = size - i < kCharsPerLine ? size - i : size_t(kCharsPerLine);
 
     end += i;
     while (i < end) {
@@ -59,27 +59,27 @@ static bool isSpace(const char c) {
 static bool isCommand(const char* str, const char* cmd) {
   while (str[0] && isSpace(str[0])) str++;
 
-  size_t sLen = std::strlen(str);
-  while (sLen && isSpace(str[sLen - 1])) sLen--;
+  size_t strSize = std::strlen(str);
+  while (strSize && isSpace(str[strSize - 1])) strSize--;
 
-  size_t cLen = std::strlen(cmd);
-  return sLen == cLen && std::memcmp(str, cmd, sLen) == 0;
+  size_t cmdSize = std::strlen(cmd);
+  return cmdSize == strSize && std::memcmp(str, cmd, strSize) == 0;
 }
 
 int main(int argc, char* argv[]) {
   CmdLine cmd(argc, argv);
-  const char* archArg = cmd.getKey("--arch");
-  const char* baseArg = cmd.getKey("--base");
+  const char* archArg = cmd.valueOf("--arch");
+  const char* baseArg = cmd.valueOf("--base");
 
-  uint32_t archType = ArchInfo::kTypeX64;
+  uint32_t archId = ArchInfo::kIdX64;
   uint64_t baseAddress = Globals::kNoBaseAddress;
 
   if (archArg) {
     if (std::strcmp(archArg, "x86") == 0) {
-      archType = ArchInfo::kTypeX86;
+      archId = ArchInfo::kIdX86;
     }
     else if (std::strcmp(archArg, "x64") == 0) {
-      archType = ArchInfo::kTypeX64;
+      archId = ArchInfo::kIdX64;
     }
     else {
       std::printf("Invalid --arch parameter\n");
@@ -91,10 +91,10 @@ int main(int argc, char* argv[]) {
   }
 
   if (baseArg) {
-    size_t len = std::strlen(baseArg);
-    size_t maxLen = archType == ArchInfo::kTypeX64 ? 16 : 8;
+    size_t size = std::strlen(baseArg);
+    size_t maxSize = archId == ArchInfo::kIdX64 ? 16 : 8;
 
-    if (!len || len > maxLen || !hexToU64(baseAddress, baseArg, len)) {
+    if (!size || size > maxSize || !hexToU64(baseAddress, baseArg, size)) {
       std::printf("Invalid --base parameter\n");
       return 1;
     }
@@ -114,15 +114,15 @@ int main(int argc, char* argv[]) {
   std::printf("===============================================================\n");
 
   StringLogger logger;
-  logger.addOptions(Logger::kOptionBinaryForm);
+  logger.addFlags(FormatOptions::kFlagMachineCode);
 
-  CodeInfo ci(archType, 0, baseAddress);
+  CodeInfo ci(archId, 0, baseAddress);
   CodeHolder code;
 
   code.init(ci);
   code.setLogger(&logger);
 
-  X86Assembler a(&code);
+  x86::Assembler a(&code);
   AsmParser p(&a);
 
   char input[4096];
@@ -133,11 +133,11 @@ int main(int argc, char* argv[]) {
     if (std::fgets(input, 4095, stdin) == NULL)
       break;
 
-    size_t len = std::strlen(input);
-    if (len > 0 && input[len - 1] == 0x0A)
-      input[--len] = 0;
+    size_t size = std::strlen(input);
+    if (size > 0 && input[size - 1] == 0x0A)
+      input[--size] = 0;
 
-    if (len == 0)
+    if (size == 0)
       continue;
 
     if (isCommand(input, ".exit"))
@@ -153,28 +153,28 @@ int main(int argc, char* argv[]) {
     }
 
     if (isCommand(input, ".print")) {
-      CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
-      dumpCode(buffer.getData(), buffer.getLength());
+      CodeBuffer& buffer = code.sectionEntry(0)->buffer();
+      dumpCode(buffer.data(), buffer.size());
       continue;
     }
 
-    logger.clearString();
+    logger.clear();
     Error err = p.parse(input);
 
     if (err == kErrorOk) {
-      const char* log = logger.getString();
-      size_t i, len = logger.getLength();
+      const char* log = logger.data();
+      size_t i, size = logger.size();
 
       // Skip the instruction part, and keep only the comment part.
-      for (i = 0; i < len; i++) {
+      for (i = 0; i < size; i++) {
         if (log[i] == ';') {
           i += 2;
           break;
         }
       }
 
-      if (i < len)
-        std::printf("%.*s", (int)(len - i), log + i);
+      if (i < size)
+        std::printf("%.*s", (int)(size - i), log + i);
     }
     else {
       std::fprintf(stdout, "ERROR: 0x%08X: %s\n", err, DebugUtils::errorAsString(err));

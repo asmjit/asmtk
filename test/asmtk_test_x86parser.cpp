@@ -11,17 +11,17 @@ using namespace asmtk;
 
 struct TestEntry {
   uint64_t baseAddress;
-  uint8_t archType;
+  uint8_t archId;
   uint8_t mustPass;
-  uint8_t asmLength;
-  uint8_t mcLength;
+  uint8_t asmSize;
+  uint8_t mcSize;
   char machineCode[16];
   char asmString[64];
 };
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
   BASE,                                            \
-  ArchInfo::kTypeX86,                              \
+  ArchInfo::kIdX86,                              \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   uint8_t(sizeof(MACHINE_CODE) - 1),               \
@@ -31,7 +31,7 @@ struct TestEntry {
 
 #define X86_FAIL(BASE, ASM_STRING) {               \
   BASE,                                            \
-  ArchInfo::kTypeX86,                              \
+  ArchInfo::kIdX86,                              \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
@@ -41,7 +41,7 @@ struct TestEntry {
 
 #define X64_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
   BASE,                                            \
-  ArchInfo::kTypeX64,                              \
+  ArchInfo::kIdX64,                              \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   uint8_t(sizeof(MACHINE_CODE) - 1),               \
@@ -51,7 +51,7 @@ struct TestEntry {
 
 #define X64_FAIL(BASE, ASM_STRING) {               \
   BASE,                                            \
-  ArchInfo::kTypeX64,                              \
+  ArchInfo::kIdX64,                              \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
@@ -198,6 +198,9 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x0F\xB7\x07"                                     , "movzx eax, word ptr [rdi]"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xB7\x07"                                 , "movzx rax, word ptr [rdi]"),
   X64_PASS(0x0000000000000000, "\xF0\x01\x18"                                     , "lock add [rax], ebx"),
+  X64_PASS(0x0000000000000000, "\x0F\xA0"                                         , "push fs"),
+  X64_PASS(0x0000000000000000, "\x0F\xA8"                                         , "push gs"),
+  X64_PASS(0x0000000000000000, "\x40\x0F\xA8"                                     , "rex push gs"),
   X64_PASS(0x0000000000000000, "\x0F\xC8"                                         , "bswap eax"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xC8"                                     , "bswap rax"),
   X64_PASS(0x0000000000000000, "\x66\x0F\xBA\x20\x01"                             , "bt word ptr [rax], 1"),
@@ -430,6 +433,7 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xC4\xE2\xF9\x90\x04\x05\x00\x00\x00\x00"         , "vpgatherdq xmm0, [xmm0], xmm0"),
   X86_PASS(0x0000000000000000, "\xC4\xE2\xFD\x91\x04\x05\x00\x00\x00\x00"         , "vpgatherqq ymm0, [ymm0], ymm0"),
   X86_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [eax + xmm0], xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF3\x6D\x08\x3E\xCB\x00"                     , "vpcmpub k1, xmm2, xmm3, 0x0"),
 
   // 64-bit AVX+ and AVX512+ instructions.
   X64_PASS(0x0000000000000000, "\xC5\xF9\x6E\x5A\x10"                             , "vmovd xmm3, dword ptr [rdx+0x10]"),
@@ -507,6 +511,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\xC4\xE2\x69\x90\x44\x0D\x00"                     , "vpgatherdd xmm0, [rbp + xmm1], xmm2"),
   X64_PASS(0x0000000000000000, "\xC4\xC2\x69\x90\x04\x0C"                         , "vpgatherdd xmm0, [r12 + xmm1], xmm2"),
   X64_PASS(0x0000000000000000, "\xC4\xC2\x69\x90\x44\x0D\x00"                     , "vpgatherdd xmm0, [r13 + xmm1], xmm2"),
+  X64_PASS(0x0000000000000000, "\x62\xF3\x6D\x08\x3E\xCB\x00"                     , "vpcmpub k1, xmm2, xmm3, 0x0"),
 
   // 32-bit jmp/call.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
@@ -735,11 +740,11 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
 
   for (size_t i = 0; i < count; i++) {
     const TestEntry& entry = entries[i];
-    const char* arch = entry.archType == ArchInfo::kTypeX86 ? "X86" : "X64";
+    const char* arch = entry.archId == ArchInfo::kIdX86 ? "X86" : "X64";
 
     // Initialize CodeInfo with proper architecture and base-address.
     CodeInfo ci;
-    ci.init(entry.archType, 0, entry.baseAddress);
+    ci.init(entry.archId, 0, entry.baseAddress);
 
     // Initialize CodeHolder.
     CodeHolder code;
@@ -752,8 +757,8 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
       continue;
     }
 
-    X86Assembler a(&code);
-    err = AsmParser(&a).parse(entry.asmString, entry.asmLength);
+    x86::Assembler a(&code);
+    err = AsmParser(&a).parse(entry.asmString, entry.asmSize);
 
     if (err) {
       if (!entry.mustPass) {
@@ -768,12 +773,12 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
       }
     }
     else {
-      CodeBuffer& buf = code.getSectionEntry(0)->getBuffer();
+      CodeBuffer& buf = code.sectionEntry(0)->buffer();
 
-      if (entry.mustPass && buf.getLength() == entry.mcLength && std::memcmp(buf.getData(), entry.machineCode, entry.mcLength) == 0) {
+      if (entry.mustPass && buf.size() == entry.mcSize && std::memcmp(buf.data(), entry.machineCode, entry.mcSize) == 0) {
         if (!options.onlyFailures) {
           printf(" %s: %-55s -> ", arch, entry.asmString);
-          dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
+          dumpHex(reinterpret_cast<const char*>(buf.data()), buf.size());
           printf(" [OK]\n");
         }
 
@@ -782,7 +787,7 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
       }
       else {
         printf("-%s: %-55s -> ", arch, entry.asmString);
-        dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
+        dumpHex(reinterpret_cast<const char*>(buf.data()), buf.size());
 
         if (entry.mustPass) {
           printf(" [FAILED]\n");
@@ -791,7 +796,7 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
           for (size_t j = 0; j < numSpaces; j++) printf(" ");
 
           printf(" != ");
-          dumpHex(entry.machineCode, entry.mcLength);
+          dumpHex(entry.machineCode, entry.mcSize);
           printf(" [EXPECTED]\n");
         }
         else {

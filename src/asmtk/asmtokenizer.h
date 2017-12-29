@@ -43,31 +43,31 @@ struct AsmToken {
   };
 
   inline bool is(char c0) {
-    return len == 1 && data[0] == c0;
+    return size == 1 && data[0] == c0;
   }
   inline bool is(char c0, char c1) {
-    return len == 2 && data[0] == c0 && data[1] == c1;
+    return size == 2 && data[0] == c0 && data[1] == c1;
   }
   inline bool is(char c0, char c1, char c2) {
-    return len == 3 && data[0] == c0 && data[1] == c1 && data[2] == c2;
+    return size == 3 && data[0] == c0 && data[1] == c1 && data[2] == c2;
   }
   inline bool is(char c0, char c1, char c2, char c3) {
-    return len == 4 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3;
+    return size == 4 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3;
   }
   inline bool is(char c0, char c1, char c2, char c3, char c4) {
-    return len == 5 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3 && data[4] == c4;
+    return size == 5 && data[0] == c0 && data[1] == c1 && data[2] == c2 && data[3] == c3 && data[4] == c4;
   }
 
   inline void reset() {
     type = kEnd;
     data = nullptr;
-    len = 0;
+    size = 0;
     u64 = 0;
   }
 
-  inline uint32_t setData(uint32_t type, const uint8_t* data, size_t len) {
+  inline uint32_t setData(uint32_t type, const uint8_t* data, size_t size) {
     this->data = data;
-    this->len = len;
+    this->size = size;
     this->type = type;
     return type;
   }
@@ -78,7 +78,7 @@ struct AsmToken {
 
   uint32_t type;
   const uint8_t* data;
-  size_t len;
+  size_t size;
 
   union {
     double f64;
@@ -112,9 +112,9 @@ public:
   uint32_t next(AsmToken* token, uint32_t flags = 0);
   inline void putBack(AsmToken* token) { _cur = token->data; }
 
-  inline void setInput(const uint8_t* input, size_t len) {
+  inline void setInput(const uint8_t* input, size_t size) {
     _input = input;
-    _end = input + len;
+    _end = input + size;
     _cur = input;
   }
 
