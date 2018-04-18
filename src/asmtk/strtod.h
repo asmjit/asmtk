@@ -12,14 +12,17 @@
 #include "./globals.h"
 
 #if ASMJIT_OS_WINDOWS
-# define ASMTK_STRTOD_MSLOCALE
-# include <locale.h>
-# include <stdlib.h>
+  #define ASMTK_STRTOD_MSLOCALE
+  #include <locale.h>
+  #include <stdlib.h>
 #else
-# define ASMTK_STRTOD_XLOCALE
-# include <locale.h>
-# include <stdlib.h>
-# include <xlocale.h>
+  #define ASMTK_STRTOD_XLOCALE
+  #include <locale.h>
+  #include <stdlib.h>
+  #if ASMJIT_OS_BSD || ASMJIT_OS_MAC
+    // xlocale.h is not available on Linux anymore, it uses <locale.h>.
+    #include <xlocale.h>
+  #endif
 #endif
 
 namespace asmtk {

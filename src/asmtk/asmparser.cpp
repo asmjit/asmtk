@@ -97,7 +97,7 @@ void AsmParser::putTokenBack(AsmToken* token) noexcept {
 
 static void strToLower(uint8_t* dst, const uint8_t* src, size_t size) noexcept{
   for (size_t i = 0; i < size; i++)
-    dst[i] = StringUtils::toLower<uint8_t>(uint8_t(src[i]));
+    dst[i] = Support::asciiToLower<uint8_t>(uint8_t(src[i]));
 }
 
 #define COMB_CHAR_2(a, b) \
@@ -113,9 +113,9 @@ static bool x86ParseRegister(Operand_& op, const uint8_t* s, size_t size) noexce
   if (size < kMinSize || size > kMaxSize) return false;
   const uint8_t* sEnd = s + size;
 
-  uint32_t c0 = StringUtils::toLower<uint32_t>(s[0]);
-  uint32_t c1 = StringUtils::toLower<uint32_t>(s[1]);
-  uint32_t c2 = size > 2 ? StringUtils::toLower<uint32_t>(s[2]) : uint32_t(0);
+  uint32_t c0 = Support::asciiToLower<uint32_t>(s[0]);
+  uint32_t c1 = Support::asciiToLower<uint32_t>(s[1]);
+  uint32_t c2 = size > 2 ? Support::asciiToLower<uint32_t>(s[2]) : uint32_t(0);
   uint32_t cn = (c0 << 8) + c1;
 
   uint32_t rType = x86::Reg::kTypeNone;
@@ -154,7 +154,7 @@ static bool x86ParseRegister(Operand_& op, const uint8_t* s, size_t size) noexce
   // [AH|BH|CH|DH]
   // [AX|BX|CX|DX]
   // [ES|CS|SS|DS|FS|GS]
-  if (size == 2 && IntUtils::isBetween<uint32_t>(c0, 'a', 's')) {
+  if (size == 2 && Support::isBetween<uint32_t>(c0, 'a', 's')) {
     if (c0 <= 'd') {
       rId = gpLetterToRegIndex[c0 - 'a'];
 
@@ -219,7 +219,7 @@ TrySpBpSiDi:
     rType = x86::Reg::kTypeGpq;
 
     // Handle 'b', 'w', and 'd' suffixes.
-    c2 = StringUtils::toLower<uint32_t>(sEnd[-1]);
+    c2 = Support::asciiToLower<uint32_t>(sEnd[-1]);
     if (c2 == 'b')
       rType = x86::Reg::kTypeGpbLo;
     else if (c2 == 'w')
@@ -404,9 +404,9 @@ static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) 
       // The specifier may be followed by 'ptr', skip it in such case.
       if (type == AsmToken::kSym &&
           token->size == 3 &&
-          StringUtils::toLower<uint32_t>(token->data[0]) == 'p' &&
-          StringUtils::toLower<uint32_t>(token->data[1]) == 't' &&
-          StringUtils::toLower<uint32_t>(token->data[2]) == 'r') {
+          Support::asciiToLower<uint32_t>(token->data[0]) == 'p' &&
+          Support::asciiToLower<uint32_t>(token->data[1]) == 't' &&
+          Support::asciiToLower<uint32_t>(token->data[2]) == 'r') {
         type = parser.nextToken(token);
       }
 
@@ -556,8 +556,8 @@ MemOp:
         }
 
         if (!base.isNone()) {
-          if (!IntUtils::isI32<int64_t>(int64_t(offset)) &&
-              !IntUtils::isU32<int64_t>(int64_t(offset)))
+          if (!Support::isI32<int64_t>(int64_t(offset)) &&
+              !Support::isU32<int64_t>(int64_t(offset)))
             return DebugUtils::errored(kErrorInvalidAddress64Bit);
 
           int32_t disp32 = int32_t(offset & 0xFFFFFFFFU);
@@ -1036,7 +1036,7 @@ Error AsmParser::parseCommand() noexcept {
         if (tType != AsmToken::kU64)
           return DebugUtils::errored(kErrorInvalidState);
 
-        if (tmp.u64 > std::numeric_limits<uint32_t>::max() || !IntUtils::isPowerOf2(tmp.u64))
+        if (tmp.u64 > std::numeric_limits<uint32_t>::max() || !Support::isPowerOf2(tmp.u64))
           return DebugUtils::errored(kErrorInvalidState);
 
         ASMJIT_PROPAGATE(_emitter->align(kAlignCode, uint32_t(tmp.u64)));
@@ -1051,7 +1051,7 @@ Error AsmParser::parseCommand() noexcept {
         uint32_t nBytes   = (directive == kX86DirectiveDB) ? 1 :
                             (directive == kX86DirectiveDW) ? 2 :
                             (directive == kX86DirectiveDD) ? 4 : 8;
-        uint64_t maxValue = IntUtils::lsbMask<uint64_t>(nBytes * 8);
+        uint64_t maxValue = Support::lsbMask<uint64_t>(nBytes * 8);
 
         StringBuilderTmp<512> db;
         for (;;) {

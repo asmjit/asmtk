@@ -52,7 +52,7 @@ public:
   inline void addLowercasedChar(const T* input, size_t i) noexcept {
     size_t nIndex = i / sizeof(Value);
     size_t nByte  = i % sizeof(Value);
-    _value[nIndex] |= Value(asmjit::StringUtils::toLower(uint8_t(input[i]))) << (nByte * 8U);
+    _value[nIndex] |= Value(asmjit::Support::asciiToLower(uint8_t(input[i]))) << (nByte * 8U);
   }
 
   inline bool test(char x0, char x1 = '\0', char x2 = '\0', char x3 = '\0') const noexcept {
