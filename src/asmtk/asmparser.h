@@ -37,8 +37,8 @@ public:
   // --------------------------------------------------------------------------
 
   inline const char* input() const noexcept { return reinterpret_cast<const char*>(_tokenizer._input); }
-  inline bool setInput(const char* input, size_t size = asmjit::Globals::kNotFound) noexcept {
-    if (size == asmjit::Globals::kNotFound)
+  inline bool setInput(const char* input, size_t size = SIZE_MAX) noexcept {
+    if (size == SIZE_MAX)
       size = ::strlen(input);
 
     _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), size);
