@@ -78,7 +78,7 @@ public:
   //! the end is reached. It returns `kErrorOk` on success (which means that all
   //! commands were parsed successfully), otherwise and error code describing
   //! the problem.
-  Error parse(const char* input, size_t size = asmjit::Globals::kNotFound) noexcept;
+  Error parse(const char* input, size_t size = SIZE_MAX) noexcept;
 
   Error parseCommand() noexcept;
 
