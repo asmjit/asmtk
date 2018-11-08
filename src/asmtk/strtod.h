@@ -11,7 +11,7 @@
 // [Dependencies]
 #include "./globals.h"
 
-#if ASMJIT_OS_WINDOWS
+#if defined(_WIN32) || defined(_WINDOWS)
   #define ASMTK_STRTOD_MSLOCALE
   #include <locale.h>
   #include <stdlib.h>

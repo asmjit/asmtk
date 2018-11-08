@@ -365,7 +365,7 @@ static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* na
     }
 
     L = parser._emitter->newNamedLabel(reinterpret_cast<const char*>(name), size);
-    if (!L.isValid()) return DebugUtils::errored(kErrorNoHeapMemory);
+    if (!L.isValid()) return DebugUtils::errored(kErrorOutOfMemory);
   }
 
   dst = L;
@@ -556,8 +556,8 @@ MemOp:
         }
 
         if (!base.isNone()) {
-          if (!Support::isI32<int64_t>(int64_t(offset)) &&
-              !Support::isU32<int64_t>(int64_t(offset)))
+          if (!Support::isInt32<int64_t>(int64_t(offset)) &&
+              !Support::isUInt32<int64_t>(int64_t(offset)))
             return DebugUtils::errored(kErrorInvalidAddress64Bit);
 
           int32_t disp32 = int32_t(offset & 0xFFFFFFFFU);
@@ -1053,7 +1053,7 @@ Error AsmParser::parseCommand() noexcept {
                             (directive == kX86DirectiveDD) ? 4 : 8;
         uint64_t maxValue = Support::lsbMask<uint64_t>(nBytes * 8);
 
-        StringBuilderTmp<512> db;
+        StringTmp<512> db;
         for (;;) {
           if (tType != AsmToken::kU64)
             return DebugUtils::errored(kErrorInvalidState);
