@@ -55,11 +55,37 @@ cxx_add_source(asmtk ASMTK_SRC asmtk
   strtod.h
 )
 
+if(ASMJIT_EMBED)
+  list(APPEND ASMTK_SRC ${ASMJIT_SRC})
+endif()
+
 # =============================================================================
 # [AsmTK - Targets]
 # =============================================================================
 
 if(NOT ASMTK_EMBED)
+  # Add `asmtk` library.
+  cxx_add_library(asmtk asmtk 
+    "${ASMTK_SRC}"
+    "${ASMTK_DEPS}"
+    "${ASMTK_PRIVATE_CFLAGS}"
+    "${ASMTK_PRIVATE_CFLAGS_DBG}"
+    "${ASMTK_PRIVATE_CFLAGS_REL}")
+  target_include_directories(asmtk BEFORE PRIVATE ${ASMJIT_INCLUDE_DIR})
+  set_target_properties(asmtk PROPERTIES LINK_FLAGS "${ASMJIT_PRIVATE_LFLAGS}")
+
+  foreach(_src_file ${ASMTK_SRC})
+    get_filename_component(_src_dir ${_src_file} PATH)
+    get_filename_component(_src_name ${_src_file} NAME)
+    string(REGEX REPLACE "^${ASMTK_SOURCE_DIR}/" "" targetpath "${_src_dir}")
+    if("${_src_name}" MATCHES ".h$")
+      if(NOT "${_src_name}" MATCHES "_p.h$")
+        install(FILES ${_src_file} DESTINATION "include/${targetpath}")
+      endif()
+    endif()
+  endforeach()
+
+  # Add `asmtk` tests and samples.
   if(ASMTK_BUILD_TEST)
     set(ASMTK_TEST_CFLAGS
       ${ASMJIT_CFLAGS}
@@ -73,9 +99,15 @@ if(NOT ASMTK_EMBED)
       asmtk_test_handler
       asmtk_test_x86)
 
+    set(TARGET_LIBS asmtk)
+
+    if(NOT ASMJIT_EMBED)
+      list(APPEND TARGET_LIBS asmjit)
+    endif()
+
     foreach(_target ${ASMTK_SAMPLES_SRC})
-      add_executable(${_target} ${ASMJIT_SRC} ${ASMTK_SRC} "${ASMTK_DIR}/test/${_target}.cpp")
-      target_link_libraries(${_target} ${ASMJIT_DEPS})
+      add_executable(${_target} "${ASMTK_DIR}/test/${_target}.cpp")
+      target_link_libraries(${_target} ${TARGET_LIBS} ${ASMJIT_DEPS})
       target_include_directories(${_target} BEFORE PRIVATE ${ASMJIT_INCLUDE_DIR})
       set_target_properties(${_target} PROPERTIES LINK_FLAGS "${ASMJIT_PRIVATE_LFLAGS}")
 
