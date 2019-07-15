@@ -4,22 +4,28 @@
 // [License]
 // Zlib - See LICENSE.md file in the package.
 
-// [Guard]
 #ifndef _ASMTK_STRTOD_H
 #define _ASMTK_STRTOD_H
 
-// [Dependencies]
 #include "./globals.h"
 
-#if ASMJIT_OS_WINDOWS
-# define ASMTK_STRTOD_MSLOCALE
-# include <locale.h>
-# include <stdlib.h>
+#if defined(_WIN32)
+  #define ASMTK_STRTOD_MSLOCALE
+  #include <locale.h>
+  #include <stdlib.h>
 #else
-# define ASMTK_STRTOD_XLOCALE
-# include <locale.h>
-# include <stdlib.h>
-# include <xlocale.h>
+  #define ASMTK_STRTOD_XLOCALE
+  #include <locale.h>
+  #include <stdlib.h>
+  // xlocale.h is not available on Linux anymore, it uses <locale.h>.
+  #if defined(__APPLE__    ) || \
+      defined(__bsdi__     ) || \
+      defined(__DragonFly__) || \
+      defined(__FreeBSD__  ) || \
+      defined(__NetBSD__   ) || \
+      defined(__OpenBSD__  )
+    #include <xlocale.h>
+  #endif
 #endif
 
 namespace asmtk {
@@ -53,7 +59,6 @@ public:
 #endif
 };
 
-} // asmtk namespace
+} // {asmtk}
 
-// [Guard]
 #endif // _ASMTK_STRTOD_H

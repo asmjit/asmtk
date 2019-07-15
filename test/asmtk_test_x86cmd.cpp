@@ -1,51 +1,17 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include "./asmtk.h"
+#include "./cmdline.h"
 
 using namespace asmjit;
 using namespace asmtk;
 
-class CmdLine {
-public:
-  CmdLine(int argc, const char* const* argv)
-    : argc(argc),
-      argv(argv) {}
-
-  bool hasKey(const char* key) const {
-    for (int i = 0; i < argc; i++)
-      if (::strcmp(argv[i], key) == 0)
-        return true;
-    return false;
-  }
-
-  const char* getKey(const char* key) const {
-    size_t keyLen = ::strlen(key);
-    size_t argLen = 0;
-
-    const char* arg = NULL;
-    for (int i = 0; i <= argc; i++) {
-      if (i == argc)
-        return NULL;
-
-      arg = argv[i];
-      argLen = ::strlen(arg);
-      if (argLen >= keyLen && ::memcmp(arg, key, keyLen) == 0)
-        break;
-    }
-
-    if (argLen > keyLen && arg[keyLen] == '=')
-      return arg + keyLen + 1;
-    else
-      return arg + keyLen;
-  }
-
-  int argc;
-  const char* const* argv;
-};
-
-static bool hexToU64(uint64_t& out, const char* src, size_t len) {
+static bool hexToU64(uint64_t& out, const char* src, size_t size) {
   uint64_t val = 0;
-  for (size_t i = 0; i < len; i++) {
+  for (size_t i = 0; i < size; i++) {
     uint32_t c = src[i];
     if (c >= '0' && c <= '9')
       c = c - '0';
@@ -62,14 +28,14 @@ static bool hexToU64(uint64_t& out, const char* src, size_t len) {
   return true;
 }
 
-static void dumpCode(const uint8_t* buf, size_t len) {
+static void dumpCode(const uint8_t* buf, size_t size) {
   enum { kCharsPerLine = 39 };
   char hex[kCharsPerLine * 2 + 1];
 
   size_t i = 0;
-  while (i < len) {
+  while (i < size) {
     size_t j = 0;
-    size_t end = len - i < kCharsPerLine ? len - i : size_t(kCharsPerLine);
+    size_t end = size - i < kCharsPerLine ? size - i : size_t(kCharsPerLine);
 
     end += i;
     while (i < end) {
@@ -93,27 +59,27 @@ static bool isSpace(const char c) {
 static bool isCommand(const char* str, const char* cmd) {
   while (str[0] && isSpace(str[0])) str++;
 
-  size_t sLen = ::strlen(str);
-  while (sLen && isSpace(str[sLen - 1])) sLen--;
+  size_t strSize = strlen(str);
+  while (strSize && isSpace(str[strSize - 1])) strSize--;
 
-  size_t cLen = ::strlen(cmd);
-  return sLen == cLen && ::memcmp(str, cmd, sLen) == 0;
+  size_t cmdSize = strlen(cmd);
+  return cmdSize == strSize && memcmp(str, cmd, strSize) == 0;
 }
 
 int main(int argc, char* argv[]) {
   CmdLine cmd(argc, argv);
-  const char* archArg = cmd.getKey("--arch");
-  const char* baseArg = cmd.getKey("--base");
+  const char* archArg = cmd.valueOf("--arch");
+  const char* baseArg = cmd.valueOf("--base");
 
-  uint32_t archType = ArchInfo::kTypeX64;
+  uint32_t archId = ArchInfo::kIdX64;
   uint64_t baseAddress = Globals::kNoBaseAddress;
 
   if (archArg) {
-    if (::strcmp(archArg, "x86") == 0) {
-      archType = ArchInfo::kTypeX86;
+    if (strcmp(archArg, "x86") == 0) {
+      archId = ArchInfo::kIdX86;
     }
-    else if (::strcmp(archArg, "x64") == 0) {
-      archType = ArchInfo::kTypeX64;
+    else if (strcmp(archArg, "x64") == 0) {
+      archId = ArchInfo::kIdX64;
     }
     else {
       printf("Invalid --arch parameter\n");
@@ -125,10 +91,10 @@ int main(int argc, char* argv[]) {
   }
 
   if (baseArg) {
-    size_t len = ::strlen(baseArg);
-    size_t maxLen = archType == ArchInfo::kTypeX64 ? 16 : 8;
+    size_t size = strlen(baseArg);
+    size_t maxSize = archId == ArchInfo::kIdX64 ? 16 : 8;
 
-    if (!len || len > maxLen || !hexToU64(baseAddress, baseArg, len)) {
+    if (!size || size > maxSize || !hexToU64(baseAddress, baseArg, size)) {
       printf("Invalid --base parameter\n");
       return 1;
     }
@@ -144,28 +110,42 @@ int main(int argc, char* argv[]) {
   printf("  - Enter instruction and its operands to be encoded.\n"          );
   printf("  - Enter '.clear' to clear everything.\n"                        );
   printf("  - Enter '.print' to print the current code.\n"                  );
-  printf("  - Enter '' (empty string) to exit.\n"                           );
+  printf("  - Enter '.exit' (or Ctrl+D) to exit.\n"                         );
   printf("===============================================================\n");
 
   StringLogger logger;
-  logger.addOptions(Logger::kOptionBinaryForm);
+  logger.addFlags(FormatOptions::kFlagMachineCode);
 
-  CodeInfo ci(archType, 0, baseAddress);
+  CodeInfo ci(archId, 0, baseAddress);
   CodeHolder code;
 
   code.init(ci);
   code.setLogger(&logger);
 
-  X86Assembler a(&code);
+  x86::Assembler a(&code);
   AsmParser p(&a);
 
   char input[4096];
+  input[4095] = 0;
+
   for (;;) {
-    fgets(input, 4095, stdin);
-    if (input[0] == 0) break;
+    // fgets returns NULL on EOF.
+    if (fgets(input, 4095, stdin) == NULL)
+      break;
+
+    size_t size = strlen(input);
+    if (size > 0 && input[size - 1] == 0x0A)
+      input[--size] = 0;
+
+    if (size == 0)
+      continue;
+
+    if (isCommand(input, ".exit"))
+      break;
 
     if (isCommand(input, ".clear")) {
-      code.reset(false);  // Detaches everything.
+      // Detaches everything.
+      code.reset(false);
       code.init(ci);
       code.setLogger(&logger);
       code.attach(&a);
@@ -173,33 +153,30 @@ int main(int argc, char* argv[]) {
     }
 
     if (isCommand(input, ".print")) {
-      code.sync(); // First sync with the assembler.
-
-      CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
-      dumpCode(buffer.getData(), buffer.getLength());
+      CodeBuffer& buffer = code.sectionById(0)->buffer();
+      dumpCode(buffer.data(), buffer.size());
       continue;
     }
 
-    logger.clearString();
+    logger.clear();
     Error err = p.parse(input);
 
     if (err == kErrorOk) {
-      const char* log = logger.getString();
-      size_t i, len = logger.getLength();
+      const char* log = logger.data();
+      size_t i, size = logger.dataSize();
 
       // Skip the instruction part, and keep only the comment part.
-      for (i = 0; i < len; i++) {
+      for (i = 0; i < size; i++) {
         if (log[i] == ';') {
           i += 2;
           break;
         }
       }
 
-      if (i < len)
-        printf("%.*s", (int)(len - i), log + i);
+      if (i < size)
+        printf("%.*s", (int)(size - i), log + i);
     }
     else {
-      a.resetLastError();
       fprintf(stdout, "ERROR: 0x%08X: %s\n", err, DebugUtils::errorAsString(err));
     }
   }

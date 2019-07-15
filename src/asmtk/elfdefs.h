@@ -4,16 +4,14 @@
 // [License]
 // Zlib - See LICENSE.md file in the package.
 
-// [Guard]
 #ifndef _ASMTK_ELFDEFS_H
 #define _ASMTK_ELFDEFS_H
 
-// [Dependencies]
 #include "./globals.h"
 
 namespace asmtk {
 
-enum ElfFileType {
+enum ElfFileType : uint32_t {
   kElfFileType_NONE         = 0,
   kElfFileType_REL          = 1,
   kElfFileType_EXEC         = 2,
@@ -23,31 +21,31 @@ enum ElfFileType {
   kElfFileType_HIPROC       = 0xFFFF
 };
 
-enum ElfFileVersion {
+enum ElfFileVersion : uint32_t {
   kElfFileVersion_NONE      = 0,
   kElfFileVersion_CURRENT   = 1
 };
 
-enum ElfFileClass {
+enum ElfFileClass : uint32_t {
   kElfFileClass_NONE        = 0,
   kElfFileClass_32          = 1,
   kElfFileClass_64          = 2
 };
 
-enum ElfFileEncoding {
+enum ElfFileEncoding : uint32_t {
   ElfFileEncoding_NONE      = 0,
   ElfFileEncoding_LE        = 1,
   ElfFileEncoding_BE        = 2
 };
 
-enum ElfMachineType {
+enum ElfMachineType : uint32_t {
   kElfMachineType_NONE      = 0,
   kElfMachineType_X86       = 3,
   kElfMachineType_ARM       = 40,
   kElfMachineType_X86_64    = 62
 };
 
-enum ElfOSABI {
+enum ElfOSABI : uint32_t {
   kElfOSABI_NONE            = 0,         //!< UNIX System V ABI.
   kElfOSABI_HPUX            = 1,
   kElfOSABI_NETBSD          = 2,
@@ -172,7 +170,6 @@ struct ElfSymbolData<uint64_t> {
 typedef ElfSymbolData<uint32_t> ElfSymbolData32;
 typedef ElfSymbolData<uint64_t> ElfSymbolData64;
 
-} // asmtk namespace
+} // {asmtk}
 
-// [Guard]
 #endif // _ASMTK_ELFDEFS_H

@@ -1,55 +1,59 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+
 #include "./asmtk.h"
+#include "./cmdline.h"
 
 using namespace asmjit;
 using namespace asmtk;
 
 struct TestEntry {
   uint64_t baseAddress;
-  uint8_t archType;
+  uint8_t archId;
   uint8_t mustPass;
-  uint8_t asmLength;
-  uint8_t mcLength;
+  uint8_t asmSize;
+  uint8_t mcSize;
   char machineCode[16];
   char asmString[64];
 };
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
-  ASMJIT_UINT64_C(BASE),                           \
-  ArchInfo::kTypeX86,                              \
+  BASE,                                            \
+  ArchInfo::kIdX86,                                \
   true,                                            \
-  static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
-  static_cast<uint8_t>(sizeof(MACHINE_CODE) - 1),  \
+  uint8_t(sizeof(ASM_STRING  ) - 1),               \
+  uint8_t(sizeof(MACHINE_CODE) - 1),               \
   MACHINE_CODE,                                    \
   ASM_STRING                                       \
 }
 
 #define X86_FAIL(BASE, ASM_STRING) {               \
-  ASMJIT_UINT64_C(BASE),                           \
-  ArchInfo::kTypeX86,                              \
+  BASE,                                            \
+  ArchInfo::kIdX86,                                \
   false,                                           \
-  static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
+  uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
   "",                                              \
   ASM_STRING                                       \
 }
 
 #define X64_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
-  ASMJIT_UINT64_C(BASE),                           \
-  ArchInfo::kTypeX64,                              \
+  BASE,                                            \
+  ArchInfo::kIdX64,                                \
   true,                                            \
-  static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
-  static_cast<uint8_t>(sizeof(MACHINE_CODE) - 1),  \
+  uint8_t(sizeof(ASM_STRING  ) - 1),               \
+  uint8_t(sizeof(MACHINE_CODE) - 1),               \
   MACHINE_CODE,                                    \
   ASM_STRING                                       \
 }
 
 #define X64_FAIL(BASE, ASM_STRING) {               \
-  ASMJIT_UINT64_C(BASE),                           \
-  ArchInfo::kTypeX64,                              \
+  BASE,                                            \
+  ArchInfo::kIdX64,                                \
   false,                                           \
-  static_cast<uint8_t>(sizeof(ASM_STRING  ) - 1),  \
+  uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
   "",                                              \
   ASM_STRING                                       \
@@ -59,12 +63,28 @@ struct TestEntry {
 //   - Capstone - https://github.com/aquynh/capstone
 //   - XEDParse - https://github.com/x64dbg/XEDParse
 static const TestEntry testEntries[] = {
+  // 32-bit constants parsing.
+  X86_PASS(0x0000000000000000, "\xB8\x00\x00\x00\x00"                             , "mov eax, 0"),
+  X86_PASS(0x0000000000000000, "\xB8\x00\x00\x00\x00"                             , "mov eax, 00"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1000"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, $3E8"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, $03E8"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 0x3E8"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 3E8h"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 03E8h"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1750o"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1750q"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 01750"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 01750o"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 01750q"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1111101000b"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 01111101000b"),
+  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 0b1111101000"),
+
   // 32-bit base instructions.
-  X86_PASS(0x0000000000000000, "\x90"                                             , "nop"),
   X86_PASS(0x0000000000000000, "\x8A\xE0"                                         , "mov ah, al"),
   X86_PASS(0x0000000000000000, "\x8A\xF0"                                         , "mov dh, al"),
   X86_PASS(0x0000000000000000, "\x8B\xC3"                                         , "mov EAX, Ebx"),
-  X86_PASS(0x0000000000000000, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1000"),
   X86_PASS(0x0000000000000000, "\x89\xD8"                                         , "modmr mov eax, ebx"),
   X86_PASS(0x0000000000000000, "\xB8\xFF\xFF\xFF\xFF"                             , "mov eax, 0xFFFFFFFF"),
   X86_PASS(0x0000000000000000, "\x8C\xE0"                                         , "mov eax, fs"),
@@ -78,6 +98,13 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x8B\x54\x48\x20"                                 , "mov edx, [eax + ecx * 2 + 32]"),
   X86_PASS(0x0000000000000000, "\x8B\x54\x88\x40"                                 , "mov edx, [eax + ecx * 4 + 64]"),
   X86_PASS(0x0000000000000000, "\x8B\x94\xC8\x00\x01\x00\x00"                     , "mov edx, [eax + ecx * 8 + 128 + 128]"),
+  X86_PASS(0x0000000000000000, "\x8B\x14\x08"                                     , "mov edx, [eax      , ecx]"),
+  X86_PASS(0x0000000000000000, "\x8B\x14\x08"                                     , "mov edx, [eax +   0, ecx]"),
+  X86_PASS(0x0000000000000000, "\x8B\x94\x08\x80\x00\x00\x00"                     , "mov edx, [eax + 128, ecx]"),
+  X86_PASS(0x0000000000000000, "\x8B\x14\x08"                                     , "mov edx, [eax      , ecx * 1]"),
+  X86_PASS(0x0000000000000000, "\x8B\x14\x08"                                     , "mov edx, [eax +   0, ecx * 1]"),
+  X86_PASS(0x0000000000000000, "\x8B\x54\x48\x20"                                 , "mov edx, [eax +  32, ecx * 2]"),
+  X86_PASS(0x0000000000000000, "\x8B\x54\xC8\x02"                                 , "mov edx, [eax + 1+1, ecx * 8]"),
   X86_PASS(0x0000000000000000, "\x64\x8B\x10"                                     , "mov edx, fs:[eax]"),
   X86_PASS(0x0000000000000000, "\x64\xA1\x2C\x00\x00\x00"                         , "mov eax, fs:[0x2C]"),
   X86_PASS(0x0000000000000000, "\x64\x8B\x15\x2C\x00\x00\x00"                     , "mov edx, fs:[0x2C]"),
@@ -92,6 +119,7 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x0F\xB6\x07"                                     , "movzx eax, byte ptr [edi]"),
   X86_PASS(0x0000000000000000, "\x0F\xB6\xC6"                                     , "movzx eax, dh"),
   X86_PASS(0x0000000000000000, "\x0F\xB7\x07"                                     , "movzx eax, word ptr [edi]"),
+  X86_PASS(0x0000000000000000, "\x8D\x05\x00\x00\x00\x00"                         , "lea eax, [0]"),
   X86_PASS(0x0000000000000000, "\xF0\x01\x18"                                     , "lock add [eax], ebx"),
   X86_PASS(0x0000000000000000, "\x50"                                             , "push eax"),
   X86_PASS(0x0000000000000000, "\x51"                                             , "push ecx"),
@@ -169,7 +197,12 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x44\x0F\xB6\xFD"                                 , "movzx r15d, bpl"),
   X64_PASS(0x0000000000000000, "\x0F\xB7\x07"                                     , "movzx eax, word ptr [rdi]"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xB7\x07"                                 , "movzx rax, word ptr [rdi]"),
+  X64_PASS(0x0000000000000000, "\x8D\x04\x25\x00\x00\x00\x00"                     , "lea eax, [0]"),
+  X64_PASS(0x0000000000000000, "\x48\x8D\x04\x25\x00\x00\x00\x00"                 , "lea rax, [0]"),
   X64_PASS(0x0000000000000000, "\xF0\x01\x18"                                     , "lock add [rax], ebx"),
+  X64_PASS(0x0000000000000000, "\x0F\xA0"                                         , "push fs"),
+  X64_PASS(0x0000000000000000, "\x0F\xA8"                                         , "push gs"),
+  X64_PASS(0x0000000000000000, "\x40\x0F\xA8"                                     , "rex push gs"),
   X64_PASS(0x0000000000000000, "\x0F\xC8"                                         , "bswap eax"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xC8"                                     , "bswap rax"),
   X64_PASS(0x0000000000000000, "\x66\x0F\xBA\x20\x01"                             , "bt word ptr [rax], 1"),
@@ -179,6 +212,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x66\xFF\x00"                                     , "inc word ptr [rax]"),
   X64_PASS(0x0000000000000000, "\xFF\x00"                                         , "inc dword ptr [rax]"),
   X64_PASS(0x0000000000000000, "\x48\xFF\x00"                                     , "inc qword ptr [rax]"),
+  X64_PASS(0x0000000000000000, "\x41\x13\x51\xFD"                                 , "adc edx, dword ptr ds:[r9-3]"),
   X64_PASS(0x0000000000000000, "\xF6\xD8"                                         , "neg al"),
   X64_PASS(0x0000000000000000, "\xF6\xDC"                                         , "neg ah"),
   X64_PASS(0x0000000000000000, "\x40\xF6\xDE"                                     , "neg sil"),
@@ -217,17 +251,25 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x40\xC8\x01\x00\x02"                             , "rex enter 1, 2"),
   X64_PASS(0x0000000000000000, "\xC9"                                             , "leave"),
 
+  // 32-bit NOP.
+  X86_PASS(0x0000000000000000, "\x90"                                             , "nop"),
+  X86_PASS(0x0000000000000000, "\x66\x0F\x1F\x04\x00"                             , "nop word ptr [eax+eax]"),
+  X86_PASS(0x0000000000000000, "\x0F\x1F\x04\x00"                                 , "nop dword ptr [eax+eax]"),
+
+  // 64-bit NOP.
+  X64_PASS(0x0000000000000000, "\x90"                                             , "nop"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\x1F\x04\x00"                             , "nop word ptr [rax+rax]"),
+  X64_PASS(0x0000000000000000, "\x0F\x1F\x04\x00"                                 , "nop dword ptr [rax+rax]"),
+
   // 32-bit XACQUIRE|XRELEASE.
   X86_PASS(0x0000000000000000, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
   X86_PASS(0x0000000000000000, "\xF2\xF0\x01\x08"                                 , "xacquire lock add dword [eax], ecx"),
   X86_PASS(0x0000000000000000, "\xF3\xF0\x01\x08"                                 , "xrelease lock add dword [eax], ecx"),
 
-
   // 64-bit XACQUIRE|XRELEASE.
   X64_PASS(0x0000000000000000, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
   X64_PASS(0x0000000000000000, "\xF2\xF0\x48\x01\x08"                             , "xacquire lock add qword [rax], rcx"),
   X64_PASS(0x0000000000000000, "\xF3\xF0\x48\x01\x08"                             , "xrelease lock add qword [rax], rcx"),
-
 
   // 32-bit BMI+ instructions.
   X86_PASS(0x0000000000000000, "\x66\xF3\x0F\xB8\xC2"                             , "popcnt ax, dx"),
@@ -319,6 +361,10 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\x66\x0F\x29\x0C\x98"                             , "movapd [eax + ebx * 4], xmm1"),
   X86_PASS(0x0000000000000000, "\x66\x0F\x7F\x0C\x98"                             , "movdqa [eax + ebx * 4], xmm1"),
   X86_PASS(0x0000000000000000, "\x66\x0F\x3A\x41\xC1\x00"                         , "dppd xmm0, xmm1, 0"),
+  X86_PASS(0x0000000000000000, "\xF3\x0F\x2D\xC1"                                 , "cvtss2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xF2\x0F\x2D\xC1"                                 , "cvtsd2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xF3\x0F\x2A\xC2"                                 , "cvtsi2ss xmm0, edx"),
+  X86_PASS(0x0000000000000000, "\xF2\x0F\x2A\xC2"                                 , "cvtsi2sd xmm0, edx"),
 
   // 64-bit MMX+ and SSE+ instructions.
   X64_PASS(0x0000000000000000, "\x0F\x6F\xC1"                                     , "movq mm0, mm1"),
@@ -341,6 +387,14 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x66\x0F\x29\x0C\x98"                             , "movapd [rax + rbx * 4], xmm1"),
   X64_PASS(0x0000000000000000, "\x66\x0F\x7F\x0C\x98"                             , "movdqa [rax + rbx * 4], xmm1"),
   X64_PASS(0x0000000000000000, "\x66\x45\x0F\x3A\x41\xD3\x00"                     , "dppd xmm10, xmm11, 0"),
+  X64_PASS(0x0000000000000000, "\xF3\x0F\x2D\xC1"                                 , "cvtss2si eax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xF3\x48\x0F\x2D\xC1"                             , "cvtss2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xF2\x0F\x2D\xC1"                                 , "cvtsd2si eax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xF2\x48\x0F\x2D\xC1"                             , "cvtsd2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xF3\x0F\x2A\xC2"                                 , "cvtsi2ss xmm0, edx"),
+  X64_PASS(0x0000000000000000, "\xF3\x48\x0F\x2A\xC2"                             , "cvtsi2ss xmm0, rdx"),
+  X64_PASS(0x0000000000000000, "\xF2\x0F\x2A\xC2"                                 , "cvtsi2sd xmm0, edx"),
+  X64_PASS(0x0000000000000000, "\xF2\x48\x0F\x2A\xC2"                             , "cvtsi2sd xmm0, rdx"),
 
   // 32-bit AVX+ and AVX512+ instructions.
   X86_PASS(0x0000000000000000, "\xC5\xF9\x6E\x5A\x10"                             , "vmovd xmm3, dword ptr [edx+0x10]"),
@@ -350,13 +404,29 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xC5\xF9\x6E\xEB"                                 , "vmovd xmm5, ebx"),
   X86_PASS(0x0000000000000000, "\xC5\xF9\x7E\xEB"                                 , "vmovd ebx, xmm5"),
   X86_PASS(0x0000000000000000, "\xC5\xFA\x7E\xC1"                                 , "vmovq xmm0, xmm1"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x7D\x08\x6E\xC0"                         , "evex vmovd xmm0, eax"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x7D\x08\x7E\xC0"                         , "evex vmovd eax, xmm0"),
   X86_PASS(0x0000000000000000, "\xC5\xF5\xFD\xC7"                                 , "vpaddw ymm0, ymm1, ymm7"),
   X86_PASS(0x0000000000000000, "\xC4\xE3\x71\x41\xC2\x00"                         , "vdppd xmm0, xmm1, xmm2, 0"),
-  X86_PASS(0x0000000000000000, "\x62\xF1\xF5\xD9\x58\x00"                         , "vaddpd zmm0 {k1}{z}, zmm1, [eax] {1tox}"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\xF5\xD9\x58\x00"                         , "vaddpd zmm0 {k1}{z}, zmm1, [eax] {1to8}"),
+  X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x74\x89\x58\xC2"                         , "vaddps xmm0 {k1}{z}, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\x6C\x5F\xC2\x54\x98\x04\x0F"             , "vcmpps k2 {k7}, zmm2, dword ptr [eax+ebx*4+256] {1to16}, 15"),
+  X86_PASS(0x0000000000000000, "\xC5\xFA\x2D\xC1"                                 , "vcvtss2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xC5\xFB\x2D\xC1"                                 , "vcvtsd2si eax, xmm1"),
+  X86_PASS(0x0000000000000000, "\xC5\xF2\x2A\xC2"                                 , "vcvtsi2ss xmm0, xmm1, edx"),
+  X86_PASS(0x0000000000000000, "\xC5\xF3\x2A\xC2"                                 , "vcvtsi2sd xmm0, xmm1, edx"),
   X86_PASS(0x0000000000000000, "\xC5\xFB\xE6\x3B"                                 , "vcvtpd2dq xmm7, xmmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\xC5\xFF\xE6\x3B"                                 , "vcvtpd2dq xmm7, ymmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\xC5\xF9\x5A\x3B"                                 , "vcvtpd2ps xmm7, xmmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\xC5\xFD\x5A\x3B"                                 , "vcvtpd2ps xmm7, ymmword ptr [ebx]"),
+  X86_PASS(0x0000000000000000, "\xC5\xF9\x5A\xC1"                                 , "vcvtpd2ps xmm0, xmm1"),
+  X86_PASS(0x0000000000000000, "\xC5\xF9\x5A\x03"                                 , "vcvtpd2ps xmm0, xmmword ptr [ebx]"),
+  X86_PASS(0x0000000000000000, "\xC5\xFD\x5A\xC1"                                 , "vcvtpd2ps xmm0, ymm1"),
+  X86_PASS(0x0000000000000000, "\xC5\xFD\x5A\x03"                                 , "vcvtpd2ps xmm0, ymmword ptr [ebx]"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\xFD\x48\x5A\xC1"                         , "vcvtpd2ps ymm0, zmm1"),
+  X86_PASS(0x0000000000000000, "\x62\xF1\xFD\x48\x5A\x03"                         , "vcvtpd2ps ymm0, zmmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\x62\xF1\xFC\x08\x79\x3B"                         , "vcvtpd2udq xmm7, xmmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\x62\xF1\xFC\x28\x79\x3B"                         , "vcvtpd2udq xmm7, ymmword ptr [ebx]"),
   X86_PASS(0x0000000000000000, "\x62\xF1\xFC\x08\x5B\x3B"                         , "vcvtqq2ps xmm7, xmmword ptr [ebx]"),
@@ -376,11 +446,7 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xC4\xE2\xF9\x90\x04\x05\x00\x00\x00\x00"         , "vpgatherdq xmm0, [xmm0], xmm0"),
   X86_PASS(0x0000000000000000, "\xC4\xE2\xFD\x91\x04\x05\x00\x00\x00\x00"         , "vpgatherqq ymm0, [ymm0], ymm0"),
   X86_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [eax + xmm0], xmm2"),
-
-  X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
-  X86_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0 {k0}, xmm1, xmm2"),
-  X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
-  X86_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {k0}{z}, xmm1, xmm2"),
+  X86_PASS(0x0000000000000000, "\x62\xF3\x6D\x08\x3E\xCB\x00"                     , "vpcmpub k1, xmm2, xmm3, 0x0"),
 
   // 64-bit AVX+ and AVX512+ instructions.
   X64_PASS(0x0000000000000000, "\xC5\xF9\x6E\x5A\x10"                             , "vmovd xmm3, dword ptr [rdx+0x10]"),
@@ -389,12 +455,30 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\xC5\xF9\xD6\x5A\x10"                             , "vmovq qword ptr [rdx+0x10], xmm3"),
   X64_PASS(0x0000000000000000, "\xC5\xF9\x6E\xEB"                                 , "vmovd xmm5, ebx"),
   X64_PASS(0x0000000000000000, "\xC4\xE1\xF9\x6E\xEB"                             , "vmovq xmm5, rbx"),
+  X64_PASS(0x0000000000000000, "\x62\x61\x7D\x08\x6E\xFB"                         , "vmovd xmm31, ebx"),
+  X64_PASS(0x0000000000000000, "\x62\x61\xFD\x08\x6E\xFB"                         , "vmovq xmm31, rbx"),
   X64_PASS(0x0000000000000000, "\xC5\xF9\x7E\xEB"                                 , "vmovd ebx, xmm5"),
   X64_PASS(0x0000000000000000, "\xC4\xE1\xF9\x7E\xEB"                             , "vmovq rbx, xmm5"),
+  X64_PASS(0x0000000000000000, "\x62\x61\x7D\x08\x7E\xFB"                         , "vmovd ebx, xmm31"),
+  X64_PASS(0x0000000000000000, "\x62\x61\xFD\x08\x7E\xFB"                         , "vmovq rbx, xmm31"),
   X64_PASS(0x0000000000000000, "\xC5\xFA\x7E\xC1"                                 , "vmovq xmm0, xmm1"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x7D\x08\x6E\xC0"                         , "evex vmovd xmm0, eax"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x08\x6E\xC0"                         , "evex vmovq xmm0, rax"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x7D\x08\x7E\xC0"                         , "evex vmovd eax, xmm0"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x08\x7E\xC0"                         , "evex vmovq rax, xmm0"),
   X64_PASS(0x0000000000000000, "\xC4\x41\x35\xFD\xC7"                             , "vpaddw ymm8, ymm9, ymm15"),
   X64_PASS(0x0000000000000000, "\xC4\x43\x21\x41\xD4\x00"                         , "vdppd xmm10, xmm11, xmm12, 0"),
-  X64_PASS(0x0000000000000000, "\x62\x71\xB5\xD9\x58\x08"                         , "vaddpd zmm9 {k1}{z}, zmm9, [rax] {1tox}"),
+  X64_PASS(0x0000000000000000, "\x62\x71\xB5\xD9\x58\x08"                         , "vaddpd zmm9 {k1}{z}, zmm9, [rax] {1to8}"),
+  X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
+  X64_PASS(0x0000000000000000, "\xC5\xFA\x2D\xC1"                                 , "vcvtss2si eax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xFA\x2D\xC1"                             , "vcvtss2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xFB\x2D\xC1"                                 , "vcvtsd2si eax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xFB\x2D\xC1"                             , "vcvtsd2si rax, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xF2\x2A\xC2"                                 , "vcvtsi2ss xmm0, xmm1, edx"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xF2\x2A\xC2"                             , "vcvtsi2ss xmm0, xmm1, rdx"),
+  X64_PASS(0x0000000000000000, "\xC5\xF3\x2A\xC2"                                 , "vcvtsi2sd xmm0, xmm1, edx"),
+  X64_PASS(0x0000000000000000, "\xC4\xE1\xF3\x2A\xC2"                             , "vcvtsi2sd xmm0, xmm1, rdx"),
   X64_PASS(0x0000000000000000, "\xC5\x7B\xE6\x3B"                                 , "vcvtpd2dq xmm15, xmmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\xC5\x7F\xE6\x3B"                                 , "vcvtpd2dq xmm15, ymmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\xC5\x79\x5A\x3B"                                 , "vcvtpd2ps xmm15, xmmword ptr [rbx]"),
@@ -403,6 +487,12 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\x71\xFC\x28\x79\x3B"                         , "vcvtpd2udq xmm15, ymmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\x62\x71\xFC\x08\x5B\x3B"                         , "vcvtqq2ps xmm15, xmmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\x62\x71\xFC\x28\x5B\x3B"                         , "vcvtqq2ps xmm15, ymmword ptr [rbx]"),
+  X64_PASS(0x0000000000000000, "\xC5\xF9\x5A\xC1"                                 , "vcvtpd2ps xmm0, xmm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xF9\x5A\x03"                                 , "vcvtpd2ps xmm0, xmmword ptr [rbx]"),
+  X64_PASS(0x0000000000000000, "\xC5\xFD\x5A\xC1"                                 , "vcvtpd2ps xmm0, ymm1"),
+  X64_PASS(0x0000000000000000, "\xC5\xFD\x5A\x03"                                 , "vcvtpd2ps xmm0, ymmword ptr [rbx]"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x48\x5A\xC1"                         , "vcvtpd2ps ymm0, zmm1"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x48\x5A\x03"                         , "vcvtpd2ps ymm0, zmmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\xC5\x79\xE6\x3B"                                 , "vcvttpd2dq xmm15, xmmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\xC5\x7D\xE6\x3B"                                 , "vcvttpd2dq xmm15, ymmword ptr [rbx]"),
   X64_PASS(0x0000000000000000, "\x62\x71\xFC\x08\x78\x3B"                         , "vcvttpd2udq xmm15, xmmword ptr [rbx]"),
@@ -415,16 +505,26 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x08\x66\x27\x01"                     , "vfpclassps k4, xmmword ptr [rdi], 0x01"),
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x28\x66\x1F\x01"                     , "vfpclassps k3, ymmword ptr [rdi], 0x01"),
   X64_PASS(0x0000000000000000, "\x62\xF3\x7D\x48\x66\x17\x01"                     , "vfpclassps k2, zmmword ptr [rdi], 0x01"),
-  X64_PASS(0x0000000000000000, "\xC4\xE2\xF9\x90\x04\x05\x00\x00\x00\x00"         , "vpgatherdq xmm0, [xmm0], xmm0"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x10\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28  {rn-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x10\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28, {rn-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x30\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28  {rd-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x30\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28, {rd-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x50\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28  {ru-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x50\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28, {ru-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x70\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28  {rz-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x95\x70\x58\xF4"                         , "vaddpd zmm30, zmm29, zmm28, {rz-sae}"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\x6C\x5F\xC2\x54\x98\x04\x0F"             , "vcmpps k2 {k7}, zmm2, dword ptr [rax+rbx*4+256] {1to16}, 15"),
+  X64_PASS(0x0000000000000000, "\x62\xF1\xFD\x58\xC2\xC1\x00"                     , "vcmppd k0, zmm0, zmm1, 0x00, {sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\xFD\x18\x2E\xF5"                         , "vucomisd xmm30, xmm29  {sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\xFD\x18\x2E\xF5"                         , "vucomisd xmm30, xmm29, {sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x7C\x18\x2E\xF5"                         , "vucomiss xmm30, xmm29  {sae}"),
+  X64_PASS(0x0000000000000000, "\x62\x01\x7C\x18\x2E\xF5"                         , "vucomiss xmm30, xmm29, {sae}"),
   X64_PASS(0x0000000000000000, "\xC4\xE2\xFD\x91\x04\x05\x00\x00\x00\x00"         , "vpgatherqq ymm0, [ymm0], ymm0"),
   X64_PASS(0x0000000000000000, "\xC4\xE2\xE9\x92\x0C\x00"                         , "vgatherdpd xmm1, [rax + xmm0], xmm2"),
   X64_PASS(0x0000000000000000, "\xC4\xE2\x69\x90\x44\x0D\x00"                     , "vpgatherdd xmm0, [rbp + xmm1], xmm2"),
   X64_PASS(0x0000000000000000, "\xC4\xC2\x69\x90\x04\x0C"                         , "vpgatherdd xmm0, [r12 + xmm1], xmm2"),
   X64_PASS(0x0000000000000000, "\xC4\xC2\x69\x90\x44\x0D\x00"                     , "vpgatherdd xmm0, [r13 + xmm1], xmm2"),
-  X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0, xmm1, xmm2"),
-  X64_PASS(0x0000000000000000, "\xC5\xF0\x58\xC2"                                 , "vaddps xmm0 {k0}, xmm1, xmm2"),
-  X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {z}, xmm1, xmm2"),
-  X64_PASS(0x0000000000000000, "\x62\xF1\x74\x88\x58\xC2"                         , "vaddps xmm0 {k0}{z}, xmm1, xmm2"),
+  X64_PASS(0x0000000000000000, "\x62\xF3\x6D\x08\x3E\xCB\x00"                     , "vpcmpub k1, xmm2, xmm3, 0x0"),
 
   // 32-bit jmp/call.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
@@ -479,14 +579,11 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xC6\x05\xBA\x55\x0F\x00\xFF"                     , "MOV BYTE PTR [0x00000000F55BA], 0x00000000FF"),
   X86_PASS(0x0000000000000000, "\x81\x38\x80\x07\x00\x00"                         , "CMP DWORD PTR [EAX], 0x00000000780"),
 
-  // TODO: These two commented fail because AsmJit optimizes the encoded asm,
-  // they were commented out to keep CI happy as we know about this.
-
   // 64-bit miscellaneous instructions.
   X64_PASS(0x0000000000000000, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOV RAX, 0x1234567890"),
-//X64_PASS(0x0000000000000000, "\x48\xC7\xC0\x00\x00\x00\x00"                     , "MOV RAX, 0"),
+  X64_PASS(0x0000000000000000, "\x48\xC7\xC0\x00\x00\x00\x00"                     , "MOV RAX, 0"),
   X64_PASS(0x0000000000000000, "\x48\xB8\x00\x00\x00\x00\x01\x00\x00\x00"         , "MOV RAX, 0x0000100000000"),
-//X64_PASS(0x0000000000000000, "\x48\xC7\xC0\x8F\xFA\xFF\x00"                     , "MOV RAX, 0x0000FFFA8F"),
+  X64_PASS(0x0000000000000000, "\x48\xC7\xC0\x8F\xFA\xFF\x00"                     , "MOV RAX, 0x0000FFFA8F"),
   X64_PASS(0x0000000000000000, "\x48\xB8\x90\x78\x56\x34\x12\x00\x00\x00"         , "MOVABS RAX, 0x00001234567890"),
   X64_PASS(0x0000000000000000, "\x48\xB8\xFE\xFF\xFF\xFF\xFF\xFF\xFF\xFF"         , "MOVABS RAX, 0x0000FFFFFFFFFFFFFFFE"),
   X64_PASS(0x0000000000000000, "\x49\xB8\xF8\xFF\xFF\xFF\x01\x00\x00\x00"         , "movabs r8,0x1fffffff8"),
@@ -574,6 +671,86 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000000000, "\xF3\xAE"                                         , "repe  scasb al , byte  ptr es:[edi]"),
   X86_PASS(0x0000000000000000, "\xF3\xAF"                                         , "repe  scasd eax, dword ptr es:[edi]"),
 
+  // 64-bit instructions that use extended low-byte registers.
+  X64_PASS(0x0000000000000000, "\x40\x86\x34\x24"                                 , "xchg [rsp], sil"),
+  X64_PASS(0x0000000000000000, "\x40\x86\x3C\x24"                                 , "xchg [rsp], dil"),
+
+  // 32-bit instructions that use non-standard syntax.
+  X86_PASS(0x0000000000000000, "\x66\x0F\x38\xF8\x03"                             , "movdir64b [eax], [ebx]"),
+
+  // 64-bit instructions that use non-standard syntax.
+  X64_PASS(0x0000000000000000, "\x66\x0F\x38\xF8\x03"                             , "movdir64b [rax], [rbx]"),
+
+  // 32-bit instructions that use non-standard syntax (failure cases).
+  X86_FAIL(0x0000000000000000, "movdir64b [rax], [rbx]"),
+  X86_FAIL(0x0000000000000000, "movdir64b [eax + 1], [ebx]"),
+  X86_FAIL(0x0000000000000000, "movdir64b [eax + rbx], [ebx]"),
+
+  // 64-bit instructions that use non-standard syntax (failure cases).
+  X64_FAIL(0x0000000000000000, "movdir64b [rax + 1], [rbx]"),
+  X64_FAIL(0x0000000000000000, "movdir64b [rax + rbx], [rbx]"),
+
+  // 32-bit VMX instructions.
+  X86_PASS(0x0000000000000000, "\x66\x0F\x38\x80\x03"                             , "invept eax, [ebx]"),
+  X86_PASS(0x0000000000000000, "\x66\x0F\x38\x81\x03"                             , "invvpid eax, [ebx]"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xC1"                                     , "vmcall"),
+  X86_PASS(0x0000000000000000, "\x66\x0F\xC7\x32"                                 , "vmclear [edx]"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xD4"                                     , "vmfunc"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xC2"                                     , "vmlaunch"),
+  X86_PASS(0x0000000000000000, "\x0F\xC7\x33"                                     , "vmptrld [ebx]"),
+  X86_PASS(0x0000000000000000, "\x0F\xC7\x3B"                                     , "vmptrst [ebx]"),
+  X86_PASS(0x0000000000000000, "\x0F\x78\x18"                                     , "vmread [eax], ebx"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xC3"                                     , "vmresume"),
+  X86_PASS(0x0000000000000000, "\x0F\x79\x03"                                     , "vmwrite eax, [ebx]"),
+  X86_PASS(0x0000000000000000, "\xF3\x0F\xC7\x33"                                 , "vmxon [ebx]"),
+
+  // 64-bit VMX instructions.
+  X64_PASS(0x0000000000000000, "\x66\x0F\x38\x80\x03"                             , "invept rax, [rbx]"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\x38\x81\x03"                             , "invvpid rax, [rbx]"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xC1"                                     , "vmcall"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\xC7\x32"                                 , "vmclear [rdx]"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xD4"                                     , "vmfunc"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xC2"                                     , "vmlaunch"),
+  X64_PASS(0x0000000000000000, "\x0F\xC7\x33"                                     , "vmptrld [rbx]"),
+  X64_PASS(0x0000000000000000, "\x0F\xC7\x3B"                                     , "vmptrst [rbx]"),
+  X64_PASS(0x0000000000000000, "\x0F\x78\x18"                                     , "vmread [rax], rbx"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xC3"                                     , "vmresume"),
+  X64_PASS(0x0000000000000000, "\x0F\x79\x03"                                     , "vmwrite rax, [rbx]"),
+  X64_PASS(0x0000000000000000, "\xF3\x0F\xC7\x33"                                 , "vmxon [rbx]"),
+
+  // 32-bit LWP instructions.
+  X86_PASS(0x0000000000000000, "\x8F\xE9\x78\x12\xC2"                             , "llwpcb edx"),
+  X86_PASS(0x0000000000000000, "\x8F\xE9\x78\x12\xC9"                             , "slwpcb ecx"),
+  X86_PASS(0x0000000000000000, "\x8F\xEA\x78\x12\x03\x04\x03\x02\x01"             , "lwpins eax, [ebx], 0x01020304"),
+  X86_PASS(0x0000000000000000, "\x8F\xEA\x78\x12\x0B\x04\x03\x02\x01"             , "lwpval eax, [ebx], 0x01020304"),
+
+  // 64-bit LWP instructions.
+  X64_PASS(0x0000000000000000, "\x8F\xE9\xF8\x12\xC2"                             , "llwpcb rdx"),
+  X64_PASS(0x0000000000000000, "\x8F\xE9\xF8\x12\xC9"                             , "slwpcb rcx"),
+  X64_PASS(0x0000000000000000, "\x8F\xEA\xF8\x12\x03\x04\x03\x02\x01"             , "lwpins rax, [rbx], 0x01020304"),
+  X64_PASS(0x0000000000000000, "\x8F\xEA\xF8\x12\x0B\x04\x03\x02\x01"             , "lwpval rax, [rbx], 0x01020304"),
+
+  // 32-bit SVM|SKINIT instructions.
+  X86_PASS(0x0000000000000000, "\x0F\x01\xDD"                                     , "clgi"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xDF"                                     , "invlpga eax, ecx"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xDE"                                     , "skinit eax"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xDC"                                     , "stgi"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xDA"                                     , "vmload eax"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xD9"                                     , "vmmcall"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xD8"                                     , "vmrun eax"),
+  X86_PASS(0x0000000000000000, "\x0F\x01\xDB"                                     , "vmsave eax"),
+
+  // 64-bit SVM|SKINIT instructions.
+  X64_PASS(0x0000000000000000, "\x0F\x01\xDD"                                     , "clgi"),
+  X64_PASS(0x0000000000000000, "\x67\x0F\x01\xDF"                                 , "invlpga eax, ecx"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xDF"                                     , "invlpga rax, ecx"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xDE"                                     , "skinit eax"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xDC"                                     , "stgi"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xDA"                                     , "vmload rax"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xD9"                                     , "vmmcall"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xD8"                                     , "vmrun rax"),
+  X64_PASS(0x0000000000000000, "\x0F\x01\xDB"                                     , "vmsave rax"),
+
   // 32-bit malformed input - should cause either parsing or validation error.
   X86_FAIL(0x0000000000001000, "short jmp 0x2000"),
   X86_FAIL(0x0000000000000000, "mov al,-129"),
@@ -600,6 +777,8 @@ static const TestEntry testEntries[] = {
   X86_FAIL(0x0000000000000000, "xacquire add [eax], ecx"),
   X86_FAIL(0x0000000000000000, "xrelease add [eax], ecx"),
   X86_FAIL(0x0000000000000000, "lock xacquire xrelease add [eax], ecx"),
+  X86_FAIL(0x0000000000000000, "vaddps xmm0 {k0}, xmm1, xmm2"),
+  X86_FAIL(0x0000000000000000, "vaddps xmm0 {k0}{z}, xmm1, xmm2"),
 
   // 64-bit malformed input - should cause either parsing or validation error.
   X64_FAIL(0x0000000000001000, "short jmp 0x2000"),
@@ -623,6 +802,8 @@ static const TestEntry testEntries[] = {
   X64_FAIL(0x0000000000000000, "xacquire add [rax], rcx"),
   X64_FAIL(0x0000000000000000, "xrelease add [rax], rcx"),
   X64_FAIL(0x0000000000000000, "lock xacquire xrelease add [rax], rcx"),
+  X64_FAIL(0x0000000000000000, "vaddps xmm0 {k0}, xmm1, xmm2"),
+  X64_FAIL(0x0000000000000000, "vaddps xmm0 {k0}{z}, xmm1, xmm2"),
   X64_FAIL(0x0000000000000000, "vpgatherdd xmm0, [rip + xmm1], xmm2")
 };
 
@@ -632,79 +813,84 @@ struct TestStats {
   uint32_t total;
 };
 
+struct TestOptions {
+  inline TestOptions() { memset(this, 0, sizeof(*this)); }
+  bool onlyFailures;
+};
+
 static void dumpHex(const char* s, size_t count) {
   for (size_t i = 0; i < count; i++)
-    printf("%02X", static_cast<int>(static_cast<uint8_t>(s[i])));
+    printf("%02X", unsigned(uint8_t(s[i])));
 }
 
-static bool runTests(TestStats& out, const TestEntry* entries, size_t count) {
+static bool runTests(TestStats& out, const TestOptions& options, const TestEntry* entries, size_t count) {
   out.passed = 0;
   out.failed = 0;
-  out.total  = static_cast<uint32_t>(count);
+  out.total  = uint32_t(count);
 
   for (size_t i = 0; i < count; i++) {
     const TestEntry& entry = entries[i];
-    const char* arch = entry.archType == ArchInfo::kTypeX86 ? "X86" : "X64";
+    const char* arch = entry.archId == ArchInfo::kIdX86 ? "X86" : "X64";
 
     // Initialize CodeInfo with proper architecture and base-address.
     CodeInfo ci;
-    ci.init(entry.archType, 0, entry.baseAddress);
+    ci.init(entry.archId, 0, entry.baseAddress);
 
     // Initialize CodeHolder.
     CodeHolder code;
     Error err = code.init(ci);
 
     if (err) {
-      printf("[FAILURE] CodeHolder.init(): %s\n", DebugUtils::errorAsString(err));
+      printf("CodeHolder.init(): %s [FAILED]\n", DebugUtils::errorAsString(err));
 
       out.failed++;
       continue;
     }
 
-    X86Assembler a(&code);
-    err = AsmParser(&a).parse(entry.asmString, entry.asmLength);
-
-    // Sync Assembler with CodeHolder.
-    code.sync();
+    x86::Assembler a(&code);
+    err = AsmParser(&a).parse(entry.asmString, entry.asmSize);
 
     if (err) {
       if (!entry.mustPass) {
-        printf("[Success %s] '%s' -> '%s' (EXPECTED)\n", arch, entry.asmString, DebugUtils::errorAsString(err));
+        if (!options.onlyFailures) {
+          printf(" %s: %-55s -> %s [OK]\n", arch, entry.asmString, DebugUtils::errorAsString(err));
+        }
         out.passed++;
       }
       else {
-        printf("[FAILURE %s] '%s' -> '%s'\n", arch, entry.asmString, DebugUtils::errorAsString(err));
+        printf("-%s: %-55s -> %s [FAILED]\n", arch, entry.asmString, DebugUtils::errorAsString(err));
         out.failed++;
       }
     }
     else {
-      CodeBuffer& buf = code.getSectionEntry(0)->getBuffer();
+      CodeBuffer& buf = code.sectionById(0)->buffer();
 
-      if (entry.mustPass && buf.getLength() == entry.mcLength && ::memcmp(buf.getData(), entry.machineCode, entry.mcLength) == 0) {
-        printf("[Success %s] '%s' -> '", arch, entry.asmString);
-        dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
-        printf("'\n");
+      if (entry.mustPass && buf.size() == entry.mcSize && memcmp(buf.data(), entry.machineCode, entry.mcSize) == 0) {
+        if (!options.onlyFailures) {
+          printf(" %s: %-55s -> ", arch, entry.asmString);
+          dumpHex(reinterpret_cast<const char*>(buf.data()), buf.size());
+          printf(" [OK]\n");
+        }
 
         out.passed++;
         continue;
       }
       else {
-        printf("[FAILURE %s] '%s' -> '", arch, entry.asmString);
-        dumpHex(reinterpret_cast<const char*>(buf.getData()), buf.getLength());
-        printf("'");
+        printf("-%s: %-55s -> ", arch, entry.asmString);
+        dumpHex(reinterpret_cast<const char*>(buf.data()), buf.size());
 
         if (entry.mustPass) {
-          printf(" (OUT)\n");
+          printf(" [FAILED]\n");
 
-          size_t numSpaces = 9 + ::strlen(arch) + 3 + entry.asmLength + 1;
+          size_t numSpaces = 1 + strlen(arch) + 2 + 55;
           for (size_t j = 0; j < numSpaces; j++) printf(" ");
 
-          printf(" != '");
-          dumpHex(entry.machineCode, entry.mcLength);
-          printf("' (EXP)\n");
+          printf(" != ");
+          dumpHex(entry.machineCode, entry.mcSize);
+          printf(" [EXPECTED]\n");
         }
         else {
-          printf(" (should have failed)\n");
+          printf(" [FAILED] Should have failed\n");
         }
 
         out.failed++;
@@ -716,9 +902,15 @@ static bool runTests(TestStats& out, const TestEntry* entries, size_t count) {
 }
 
 int main(int argc, char* argv[]) {
-  TestStats stats;
-  bool allPassed = runTests(stats, testEntries, ASMJIT_ARRAY_SIZE(testEntries));
+  CmdLine cmdLine(argc, argv);
 
+  TestStats stats;
+  TestOptions options;
+
+  if (cmdLine.hasKey("--only-failures"))
+    options.onlyFailures = true;
+
+  bool allPassed = runTests(stats, options, testEntries, ASMJIT_ARRAY_SIZE(testEntries));
   if (allPassed) {
     printf("All %u tests passed!\n", stats.total);
     return 0;

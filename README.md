@@ -19,7 +19,7 @@ Features
   * Both X86 and X64 modes are supported and can be selected at runtime (i.e. they not depend on how your application is compiled).
   * Asm parser can parse everything that AsmJit provides (i.e. supports all instruction sets, named labels, etc...).
   * Asm parser can also parse instruction aliases defined by AsmTK (like `movsb`, `cmpsb`, `sal`, ...). AsmJit provides just generic `movs`, `cmps`, etc... so these are extras that are handled and recognized by AsmTK.
-  * Assembles to any `CodeEmitter`, which means that you can choose between `Assembler` and `CodeBuilder` at runtime, and that the result can be post-processed as well
+  * Assembles to any `BaseEmitter`, which means that you can choose between `Assembler` and `BaseBuilder` at runtime, and that the result can be post-processed as well
   * More to be added...
 
 TODO
@@ -31,7 +31,7 @@ TODO
 AsmParser Usage Guide
 ---------------------
 
-Assembler parsing is provided by `AsmParser` class, which emits to `CodeEmitter`:
+Assembler parsing is provided by `AsmParser` class, which emits to `BaseEmitter`:
 
 ```C++
 #include <asmtk/asmtk.h>
@@ -40,14 +40,14 @@ using namespace asmjit;
 using namespace asmtk;
 
 // Used to print binary code as hex.
-static void dumpCode(const uint8_t* buf, size_t len) {
+static void dumpCode(const uint8_t* buf, size_t size) {
   enum { kCharsPerLine = 39 };
   char hex[kCharsPerLine * 2 + 1];
 
   size_t i = 0;
-  while (i < len) {
+  while (i < size) {
     size_t j = 0;
-    size_t end = len - i < kCharsPerLine ? len - i : size_t(kCharsPerLine);
+    size_t end = size - i < kCharsPerLine ? size - i : size_t(kCharsPerLine);
 
     end += i;
     while (i < end) {
@@ -66,14 +66,14 @@ static void dumpCode(const uint8_t* buf, size_t len) {
 
 int main(int argc, char* argv[]) {
   // Setup CodeHolder for X64.
-  CodeInfo ci(ArchInfo::kTypeX64);
+  CodeInfo ci(ArchInfo::kIdX64);
   CodeHolder code;
   code.init(ci);
 
-  // Attach X86Assembler `code`.
-  X86Assembler a(&code);
+  // Attach x86::Assembler `code`.
+  x86::Assembler a(&code);
 
-  // Create AsmParser that will emit to X86Assembler.
+  // Create AsmParser that will emit to x86::Assembler.
   AsmParser p(&a);
 
   // Parse some assembly.
@@ -87,13 +87,9 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // If we are done, you must detach the Assembler from CodeHolder or sync
-  // it, so its internal state and position is synced with CodeHolder.
-  code.sync();
-
   // Now you can print the code, which is stored in the first section (.text).
-  CodeBuffer& buffer = code.getSectionEntry(0)->getBuffer();
-  dumpCode(buffer.getData(), buffer.getLength());
+  CodeBuffer& buffer = code.sectionEntry(0)->buffer();
+  dumpCode(buffer.data(), buffer.size());
 
   return 0;
 }
@@ -106,7 +102,9 @@ Support
 
 Please consider a donation if you use the project and would like to keep it active in the future.
 
-  * [Donate by PayPal](https://www.paypal.com/cgi-bin/webscr?cmd=_donations&business=QDRM6SRNG7378&lc=EN;&item_name=asmtk&currency_code=EUR)
+  * BTC: 14dEp5h8jYSxgXB9vcjE8eh78uweD76o7W
+  * ETH: 0xd4f0b9424cF31DF5a5359D029CF3A65c500a581E
+  * Please contact the author if you would still like to donate through a different channel or use a different crypto-currency.
 
 Authors & Maintainers
 ---------------------
