@@ -541,6 +541,9 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\xF2\x6D\x48\xCF\x4C\x11\x01"                 , "vgf2p8mulb zmm1, zmm2, zmmword ptr [rcx+rdx+64]"),
   X64_PASS(0x0000000000000000, "\x62\xF3\xED\x48\xCE\x4C\x11\x01\x0F"             , "vgf2p8affineqb zmm1, zmm2, zmmword ptr [rcx+rdx+64], 15"),
   X64_PASS(0x0000000000000000, "\x62\xF3\xED\x48\xCF\x4C\x11\x01\x0F"             , "vgf2p8affineinvqb zmm1, zmm2, zmmword ptr [rcx+rdx+64], 15"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\x7D\x08\x7A\xC6"                         , "vpbroadcastb xmm0, esi"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\x7D\x28\x7A\xC6"                         , "vpbroadcastb ymm0, esi"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\x7D\x48\x7A\xC6"                         , "vpbroadcastb zmm0, esi"),
 
   // 32-bit jmp/call.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
