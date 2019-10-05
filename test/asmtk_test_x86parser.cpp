@@ -544,6 +544,13 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x62\xF2\x7D\x08\x7A\xC6"                         , "vpbroadcastb xmm0, esi"),
   X64_PASS(0x0000000000000000, "\x62\xF2\x7D\x28\x7A\xC6"                         , "vpbroadcastb ymm0, esi"),
   X64_PASS(0x0000000000000000, "\x62\xF2\x7D\x48\x7A\xC6"                         , "vpbroadcastb zmm0, esi"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\xCD\x08\x8D\xF8"                         , "vpermw xmm7, xmm6, xmm0"),
+  X64_PASS(0x0000000000000000, "\xC4\xE3\xFD\x01\xFE\x01"                         , "vpermpd ymm7, ymm6, 1"),
+  X64_PASS(0x0000000000000000, "\x62\xF3\xFD\x48\x01\xFE\x01"                     , "vpermpd zmm7, zmm6, 1"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\xCD\x28\x16\xF8"                         , "vpermpd ymm7, ymm6, ymm0"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\xCD\x48\x16\xF8"                         , "vpermpd zmm7, zmm6, zmm0"),
+  X64_PASS(0x0000000000000000, "\xC4\xE2\x4D\x16\xF9"                             , "vpermps ymm7, ymm6, ymm1"),
+  X64_PASS(0x0000000000000000, "\x62\xF2\x4D\x48\x16\xF9"                         , "vpermps zmm7, zmm6, zmm1"),
 
   // 32-bit jmp/call.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
