@@ -203,6 +203,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x0000000000000000, "\x0F\xA0"                                         , "push fs"),
   X64_PASS(0x0000000000000000, "\x0F\xA8"                                         , "push gs"),
   X64_PASS(0x0000000000000000, "\x40\x0F\xA8"                                     , "rex push gs"),
+  X64_PASS(0x0000000000000000, "\x66\x0F\xC8"                                     , "bswap ax"),
   X64_PASS(0x0000000000000000, "\x0F\xC8"                                         , "bswap eax"),
   X64_PASS(0x0000000000000000, "\x48\x0F\xC8"                                     , "bswap rax"),
   X64_PASS(0x0000000000000000, "\x66\x0F\xBA\x20\x01"                             , "bt word ptr [rax], 1"),
