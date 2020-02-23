@@ -570,7 +570,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x4D\x16\xF9"                             , "vpermps ymm7, ymm6, ymm1"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x4D\x48\x16\xF9"                         , "vpermps zmm7, zmm6, zmm1"),
 
-  // 32-bit jmp/call.
+  // 32-bit jmp/call/ret.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
   X86_PASS(0x0000000077513BEE, "\xEB\x07"                                         , "JMP SHORT 0x77513BF7"),
   X86_PASS(0x0000000077513BEE, "\xEB\xCF"                                         , "JMP SHORT 0x77513BBF"),
@@ -580,8 +580,14 @@ static const TestEntry testEntries[] = {
   X86_PASS(0x0000000000405C5B, "\xE8\xCA\x70\x00\x00"                             , "CALL 0x0040CD2A"),
   X86_PASS(0x0000000000405EF0, "\xE8\x06\xFF\xFF\xFF"                             , "CALL 0x00405DFB"),
   X86_PASS(0x0000000000405CCC, "\xFF\x15\x10\x00\x00\x00"                         , "CALL DWORD PTR DS:[0x10]"),
+  X86_PASS(0x0000000000405C5B, "\xF2\xE9\xC9\x70\x00\x00"                         , "bnd jmp 0x0040CD2A"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xC3"                                             , "ret"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xC2\x10\x00"                                     , "ret 16"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF3\xC3"                                         , "rep ret"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\xC3"                                         , "bnd ret"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\xC3"                                         , "repne ret"),
 
-  // 64-bit jmp/call.
+  // 64-bit jmp/call/ret.
   X64_PASS(0x00007FFCAA022104, "\xEB\xFE"                                         , "JMP SHORT 0x7FFCAA022104"),
   X64_PASS(0x00007FFCAA022104, "\xEB\x22"                                         , "JMP SHORT 0x7FFCAA022128"),
   X64_PASS(0x00007FFCAA022104, "\xEB\xF9"                                         , "JMP SHORT 0x7FFCAA0220FF"),
@@ -589,6 +595,12 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x00007FFCAA022104, "\xE9\x7C\xF4\xFC\xFF"                             , "JMP 0x7FFCA9FF1585"),
   X64_PASS(0x0000000123456789, "\xFF\x25\xFA\xFF\xFF\xFF"                         , "JMP QWORD[0x123456789]"),
   X64_PASS(0x00007FFCA9FF1977, "\xFF\x25\xFA\x00\xFF\xFF"                         , "JMP QWORD PTR DS:[0x7FFCA9FE1A77]"),
+  X64_PASS(0x00007FFCA9FF197C, "\xF2\xE9\x34\x64\x93\x53"                         , "bnd jmp 0x7FFCFD927DB6"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC3"                                             , "ret"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC2\x10\x00"                                     , "ret 16"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\xC3"                                         , "rep ret"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\xC3"                                         , "bnd ret"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\xC3"                                         , "repne ret"),
 
   // 32-bit miscellaneous instructions.
   X86_PASS(0x0000000000405C6A, "\xFF\x35\xF4\x0A\x47\x00"                         , "PUSH DWORD PTR DS:[0x00000000470AF4]"),

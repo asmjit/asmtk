@@ -630,6 +630,7 @@ static uint32_t x86ParseInstOption(const uint8_t* s, size_t size) noexcept {
   word.addLowercasedChar(s, 1);
   word.addLowercasedChar(s, 2);
   if (size == 3) {
+    if (word.test('b', 'n', 'd')) return x86::Inst::kOptionRepne;
     if (word.test('r', 'e', 'p')) return x86::Inst::kOptionRep;
     if (word.test('r', 'e', 'x')) return x86::Inst::kOptionRex;
     return 0;
@@ -638,22 +639,22 @@ static uint32_t x86ParseInstOption(const uint8_t* s, size_t size) noexcept {
   // Options of length '4':
   word.addLowercasedChar(s, 3);
   if (size == 4) {
-    if (word.test('l', 'o', 'c', 'k')) return x86::Inst::kOptionLock;
-    if (word.test('r', 'e', 'p', 'z')) return x86::Inst::kOptionRep;
-    if (word.test('r', 'e', 'p', 'e')) return x86::Inst::kOptionRep;
-    if (word.test('l', 'o', 'n', 'g')) return x86::Inst::kOptionLongForm;
-    if (word.test('v', 'e', 'x', '3')) return x86::Inst::kOptionVex3;
     if (word.test('e', 'v', 'e', 'x')) return x86::Inst::kOptionEvex;
+    if (word.test('l', 'o', 'c', 'k')) return x86::Inst::kOptionLock;
+    if (word.test('l', 'o', 'n', 'g')) return x86::Inst::kOptionLongForm;
+    if (word.test('r', 'e', 'p', 'e')) return x86::Inst::kOptionRep;
+    if (word.test('r', 'e', 'p', 'z')) return x86::Inst::kOptionRep;
+    if (word.test('v', 'e', 'x', '3')) return x86::Inst::kOptionVex3;
     return 0;
   }
 
   // Options of length '5':
   word.addLowercasedChar(s, 4);
   if (size == 5) {
+    if (word.test('m', 'o', 'd', 'm', 'r')) return x86::Inst::kOptionModMR;
     if (word.test('r', 'e', 'p', 'n', 'e')) return x86::Inst::kOptionRepne;
     if (word.test('r', 'e', 'p', 'n', 'z')) return x86::Inst::kOptionRepne;
     if (word.test('s', 'h', 'o', 'r', 't')) return x86::Inst::kOptionShortForm;
-    if (word.test('m', 'o', 'd', 'm', 'r')) return x86::Inst::kOptionModMR;
     return 0;
   }
 
