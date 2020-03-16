@@ -341,10 +341,12 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x8D\x84\x00\x00\x40\x00\x00"                 , "lea rax, [rax + rax * 1 + 0x4000]"),
 
   // 32-bit FPU instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\x9B"                                             , "fwait"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xD8\x00"                                         , "fadd dword ptr [eax]"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xDC\x00"                                         , "fadd qword ptr [eax]"),
 
   // 64-bit FPU instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\x9B"                                             , "fwait"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xD8\x00"                                         , "fadd dword ptr [rax]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xDC\x00"                                         , "fadd qword ptr [rax]"),
 
