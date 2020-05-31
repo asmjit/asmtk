@@ -21,10 +21,10 @@ public:
     size_t keySize = strlen(key);
     size_t argSize = 0;
 
-    const char* arg = NULL;
+    const char* arg = nullptr;
     for (int i = 0; i <= argc; i++) {
       if (i == argc)
-        return NULL;
+        return nullptr;
 
       arg = argv[i];
       argSize = strlen(arg);

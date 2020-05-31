@@ -23,6 +23,7 @@ enum CharKind : uint32_t {
   kCharAxW, kCharAxX, kCharAxY, kCharAxZ,
 
   kCharUnd, // Underscore
+  kCharDot, // Dot
   kCharSym, // Special characters that can be considered a symbol [$@_].
   kCharUsd, // Dollar sign.
   kCharDsh, // Dash.
@@ -39,7 +40,7 @@ static const uint8_t CharMap[] = {
   C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), // 016-023 ........ | All invalid.
   C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), C(Inv), // 024-031 ........ | All invalid.
   C(Spc), C(Pcn), C(Pcn), C(Pcn), C(Usd), C(Pcn), C(Pcn), C(Pcn), // 032-039  !"#$%&' |
-  C(Pcn), C(Pcn), C(Pcn), C(Pcn), C(Pcn), C(Dsh), C(Pcn), C(Pcn), // 040-047 ()*+,-./ |
+  C(Pcn), C(Pcn), C(Pcn), C(Pcn), C(Pcn), C(Dsh), C(Dot), C(Pcn), // 040-047 ()*+,-./ |
   C(0x0), C(0x1), C(0x2), C(0x3), C(0x4), C(0x5), C(0x6), C(0x7), // 048-055 01234567 |
   C(0x8), C(0x9), C(Pcn), C(Pcn), C(Pcn), C(Pcn), C(Pcn), C(Pcn), // 056-063 89:;<=>? |
   C(Sym), C(0xA), C(0xB), C(0xC), C(0xD), C(0xE), C(0xF), C(AxG), // 064-071 @ABCDEFG |
@@ -74,9 +75,9 @@ static const uint8_t CharMap[] = {
 // ============================================================================
 
 AsmTokenizer::AsmTokenizer() noexcept
-  : _input(NULL),
-    _end(NULL),
-    _cur(NULL),
+  : _input(nullptr),
+    _end(nullptr),
+    _cur(nullptr),
     _stodctx() {}
 
 AsmTokenizer::~AsmTokenizer() noexcept {}

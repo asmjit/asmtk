@@ -71,15 +71,17 @@ int main(int argc, char* argv[]) {
   const char* archArg = cmd.valueOf("--arch");
   const char* baseArg = cmd.valueOf("--base");
 
-  uint32_t archId = ArchInfo::kIdX64;
+  Environment environment = hostEnvironment();
+
+  uint32_t arch = Environment::kArchX64;
   uint64_t baseAddress = Globals::kNoBaseAddress;
 
   if (archArg) {
     if (strcmp(archArg, "x86") == 0) {
-      archId = ArchInfo::kIdX86;
+      environment.setArch(Environment::kArchX86);
     }
     else if (strcmp(archArg, "x64") == 0) {
-      archId = ArchInfo::kIdX64;
+      environment.setArch(Environment::kArchX64);
     }
     else {
       printf("Invalid --arch parameter\n");
@@ -87,12 +89,12 @@ int main(int argc, char* argv[]) {
     }
   }
   else {
-    archArg = "x64";
+    archArg = environment.arch() == Environment::kArchX86 ? "x86" : "x64";
   }
 
   if (baseArg) {
     size_t size = strlen(baseArg);
-    size_t maxSize = archId == ArchInfo::kIdX64 ? 16 : 8;
+    size_t maxSize = arch == Environment::kArchX64 ? 16 : 8;
 
     if (!size || size > maxSize || !hexToU64(baseAddress, baseArg, size)) {
       printf("Invalid --base parameter\n");
@@ -113,13 +115,13 @@ int main(int argc, char* argv[]) {
   printf("  - Enter '.exit' (or Ctrl+D) to exit.\n"                         );
   printf("===============================================================\n");
 
+  environment.setArch(arch);
+
   StringLogger logger;
   logger.addFlags(FormatOptions::kFlagMachineCode);
 
-  CodeInfo ci(archId, 0, baseAddress);
   CodeHolder code;
-
-  code.init(ci);
+  code.init(environment, baseAddress);
   code.setLogger(&logger);
 
   x86::Assembler a(&code);
@@ -130,7 +132,7 @@ int main(int argc, char* argv[]) {
 
   for (;;) {
     // fgets returns NULL on EOF.
-    if (fgets(input, 4095, stdin) == NULL)
+    if (fgets(input, 4095, stdin) == nullptr)
       break;
 
     size_t size = strlen(input);
@@ -146,7 +148,7 @@ int main(int argc, char* argv[]) {
     if (isCommand(input, ".clear")) {
       // Detaches everything.
       code.reset(false);
-      code.init(ci);
+      code.init(environment, baseAddress);
       code.setLogger(&logger);
       code.attach(&a);
       continue;

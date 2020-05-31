@@ -79,7 +79,7 @@ if (NOT ASMTK_NO_CUSTOM_FLAGS)
       -O2                      # [+] Favor speed over size.
       -Oi)                     # [+] Generate intrinsic functions.
   elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(GNU|Clang|AppleClang)$")
-    list(APPEND ASMTK_PRIVATE_CFLAGS -Wall -Wextra)
+    list(APPEND ASMTK_PRIVATE_CFLAGS -Wall -Wextra -Wconversion)
     list(APPEND ASMTK_PRIVATE_CFLAGS -fno-math-errno -fno-threadsafe-statics)
     list(APPEND ASMTK_PRIVATE_CFLAGS_REL -O2)
   endif()

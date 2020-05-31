@@ -26,6 +26,7 @@ public:
   AsmTokenizer _tokenizer;
 
   size_t _currentCommandOffset;
+  uint32_t _currentGlobalLabelId;
   bool _endOfInput;
 
   UnknownSymbolHandler _unknownSymbolHandler;

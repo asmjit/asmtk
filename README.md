@@ -66,7 +66,7 @@ static void dumpCode(const uint8_t* buf, size_t size) {
 
 int main(int argc, char* argv[]) {
   // Setup CodeHolder for X64.
-  CodeInfo ci(ArchInfo::kIdX64);
+  CodeInfo ci(Environment::kArchX64);
   CodeHolder code;
   code.init(ci);
 

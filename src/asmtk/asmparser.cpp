@@ -76,8 +76,9 @@ enum X86Alias : uint32_t {
 AsmParser::AsmParser(BaseEmitter* emitter) noexcept
   : _emitter(emitter),
     _currentCommandOffset(0),
-    _unknownSymbolHandler(NULL),
-    _unknownSymbolHandlerData(NULL) {}
+    _currentGlobalLabelId(Globals::kInvalidId),
+    _unknownSymbolHandler(nullptr),
+    _unknownSymbolHandlerData(nullptr) {}
 AsmParser::~AsmParser() noexcept {}
 
 // ============================================================================
@@ -352,24 +353,68 @@ static uint32_t x86ParseSize(const uint8_t* s, size_t size) noexcept {
   return 0;
 }
 
-static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* name, size_t size) noexcept {
-  Label L = parser._emitter->labelByName(reinterpret_cast<const char*>(name), size);
+static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* name, size_t nameSize) noexcept {
+  // Resolve global/local label.
+  BaseEmitter* emitter = parser._emitter;
 
-  if (!L.isValid()) {
+  const uint8_t* localName = nullptr;
+  size_t localNameSize = 0;
+  size_t parentNameSize = nameSize;
+
+  // Don't do anything if the name starts with "..".
+  if (!(nameSize >= 2 && name[0] == '.' && name[1] == '.')) {
+    localName = static_cast<const uint8_t*>(memchr(name, '.', nameSize));
+    if (localName) {
+      parentNameSize = (size_t)(localName - name);
+      localName++;
+      localNameSize = (size_t)((name + nameSize) - localName);
+    }
+  }
+
+  Label parent;
+  Label label;
+
+  if (localName) {
+    if (name[0] == '.')
+      parent.setId(parser._currentGlobalLabelId);
+    else
+      parent = emitter->labelByName(reinterpret_cast<const char*>(name), parentNameSize);
+
+    if (parent.isValid())
+      label = emitter->labelByName(reinterpret_cast<const char*>(localName), localNameSize, parent.id());
+  }
+  else {
+    label = emitter->labelByName(reinterpret_cast<const char*>(name), nameSize, parent.id());
+  }
+
+  if (!label.isValid()) {
     if (parser._unknownSymbolHandler) {
-      Error err = parser._unknownSymbolHandler(&parser, static_cast<Operand*>(&dst), reinterpret_cast<const char*>(name), size);
-      if (err)
-        return err;
-
+      ASMJIT_PROPAGATE(parser._unknownSymbolHandler(&parser, static_cast<Operand*>(&dst), reinterpret_cast<const char*>(name), nameSize));
       if (!dst.isNone())
         return kErrorOk;
     }
 
-    L = parser._emitter->newNamedLabel(reinterpret_cast<const char*>(name), size);
-    if (!L.isValid()) return DebugUtils::errored(kErrorOutOfMemory);
+    if (localName) {
+      if (!parent.isValid()) {
+        if (!parentNameSize)
+          return DebugUtils::errored(kErrorInvalidParentLabel);
+
+        parent = emitter->newNamedLabel(reinterpret_cast<const char*>(name), parentNameSize, Label::kTypeGlobal);
+        if (!parent.isValid())
+          return DebugUtils::errored(kErrorOutOfMemory);
+      }
+      label = emitter->newNamedLabel(reinterpret_cast<const char*>(localName), localNameSize, Label::kTypeLocal, parent.id());
+      if (!label.isValid())
+        return DebugUtils::errored(kErrorOutOfMemory);
+    }
+    else {
+      label = emitter->newNamedLabel(reinterpret_cast<const char*>(name), nameSize, Label::kTypeGlobal);
+      if (!label.isValid())
+        return DebugUtils::errored(kErrorOutOfMemory);
+    }
   }
 
-  dst = L;
+  dst = label;
   return kErrorOk;
 }
 
@@ -467,7 +512,7 @@ MemOp:
       }
     }
 
-    // Parse "[base] + [index [* scale]] + [offset]" or "[base + [offset]], [index [* scale]]" parts.
+    // Parse "[base] + [index [* scale]] + [offset]" or "[base + [offset]], [index [* scale]]".
     bool commaSeparated = false;
     uint32_t opType = AsmToken::kAdd;
 
@@ -847,7 +892,7 @@ static Error x86ParseInstruction(AsmParser& parser, uint32_t& instId, uint32_t& 
     instId = x86ParseAlias(lower, size);
     if (instId == x86::Inst::kIdNone) {
       // If that didn't work out, try to match instruction as defined by AsmJit.
-      instId = InstAPI::stringToInstId(parser.emitter()->archId(), reinterpret_cast<char*>(lower), size);
+      instId = InstAPI::stringToInstId(parser.emitter()->arch(), reinterpret_cast<char*>(lower), size);
     }
 
     if (instId == x86::Inst::kIdNone) {
@@ -1024,9 +1069,17 @@ Error AsmParser::parseCommand() noexcept {
     tType = nextToken(&tmp);
     if (tType == AsmToken::kColon) {
       // Parse label.
-      Label dst;
-      ASMJIT_PROPAGATE(asmHandleSymbol(*this, dst, token.data, token.size));
-      ASMJIT_PROPAGATE(_emitter->bind(dst));
+      Label label;
+      ASMJIT_PROPAGATE(asmHandleSymbol(*this, label, token.data, token.size));
+      ASMJIT_PROPAGATE(_emitter->bind(label));
+
+      // Must be valid if we passed through asmHandleSymbol() and bind().
+      LabelEntry* le = _emitter->code()->labelEntry(label);
+      ASMJIT_ASSERT(le);
+
+      if (le->type() == Label::kTypeGlobal)
+        _currentGlobalLabelId = label.id();
+
       return kErrorOk;
     }
 
@@ -1063,7 +1116,7 @@ Error AsmParser::parseCommand() noexcept {
           if (tmp.u64 > maxValue)
             return DebugUtils::errored(kErrorInvalidImmediate);
 
-          db.appendString(reinterpret_cast<const char*>(tmp.valueBytes), nBytes);
+          db.append(reinterpret_cast<const char*>(tmp.valueBytes), nBytes);
 
           tType = nextToken(&tmp);
           if (tType != AsmToken::kComma)
@@ -1149,7 +1202,7 @@ Error AsmParser::parseCommand() noexcept {
                 return DebugUtils::errored(kErrorInvalidState);
 
               uint32_t maskRegId = 0;
-              uint32_t size = tmp.size;
+              size_t size = tmp.size;
               const uint8_t* str = tmp.data;
 
               if (size == 2 && (str[0] == 'k' || str[1] == 'K') && (maskRegId = (str[1] - (uint8_t)'0')) < 8) {
@@ -1207,7 +1260,7 @@ Error AsmParser::parseCommand() noexcept {
       }
 
       ASMJIT_PROPAGATE(x86FixupInstruction(*this, inst, operands, count));
-      ASMJIT_PROPAGATE(InstAPI::validate(_emitter->archId(), inst, operands, count));
+      ASMJIT_PROPAGATE(InstAPI::validate(_emitter->arch(), inst, operands, count));
 
       _emitter->setInstOptions(inst.options());
       _emitter->setExtraReg(inst.extraReg());

@@ -11,7 +11,7 @@ using namespace asmtk;
 
 struct TestEntry {
   uint64_t baseAddress;
-  uint8_t archId;
+  uint8_t arch;
   uint8_t mustPass;
   uint8_t asmSize;
   uint8_t mcSize;
@@ -21,7 +21,7 @@ struct TestEntry {
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
   BASE,                                            \
-  ArchInfo::kIdX86,                                \
+  Environment::kArchX86,                           \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   uint8_t(sizeof(MACHINE_CODE) - 1),               \
@@ -31,7 +31,7 @@ struct TestEntry {
 
 #define X86_FAIL(BASE, ASM_STRING) {               \
   BASE,                                            \
-  ArchInfo::kIdX86,                                \
+  Environment::kArchX86,                           \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
@@ -41,7 +41,7 @@ struct TestEntry {
 
 #define X64_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
   BASE,                                            \
-  ArchInfo::kIdX64,                                \
+  Environment::kArchX64,                           \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   uint8_t(sizeof(MACHINE_CODE) - 1),               \
@@ -51,7 +51,7 @@ struct TestEntry {
 
 #define X64_FAIL(BASE, ASM_STRING) {               \
   BASE,                                            \
-  ArchInfo::kIdX64,                                \
+  Environment::kArchX64,                           \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
@@ -894,15 +894,15 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
 
   for (size_t i = 0; i < count; i++) {
     const TestEntry& entry = entries[i];
-    const char* arch = entry.archId == ArchInfo::kIdX86 ? "X86" : "X64";
+    const char* arch = entry.arch == Environment::kArchX86 ? "X86" : "X64";
 
-    // Initialize CodeInfo with proper architecture and base-address.
-    CodeInfo ci;
-    ci.init(entry.archId, 0, entry.baseAddress);
+    // Initialize Environment with the requested architecture.
+    Environment environment;
+    environment.setArch(entry.arch);
 
     // Initialize CodeHolder.
     CodeHolder code;
-    Error err = code.init(ci);
+    Error err = code.init(environment, entry.baseAddress);
 
     if (err) {
       printf("CodeHolder.init(): %s [FAILED]\n", DebugUtils::errorAsString(err));

@@ -30,16 +30,18 @@ static Error ASMJIT_CDECL unknownSymbolHandler(AsmParser* parser, Operand* dst, 
 }
 
 int main(int argc, char* argv[]) {
-  // Initialize CodeInfo with proper architecture and base-address.
-  CodeInfo ci;
-  ci.init(ArchInfo::kIdX64, 0, uint64_t(0x1000));
+  // Initialize Environment with X64 architecture.
+  Environment environment;
+  environment.init(Environment::kArchX64);
+  uint32_t baseAddress = uint64_t(0x1000);
 
   FileLogger logger(stdout);
   logger.addFlags(FormatOptions::kFlagMachineCode);
 
   // Initialize CodeHolder.
   CodeHolder code;
-  Error err = code.init(ci);
+  Error err = code.init(environment, baseAddress);
+
   if (err) {
     printf("[FAILURE] CodeHolder.init(): %s\n", DebugUtils::errorAsString(err));
     return 1;
