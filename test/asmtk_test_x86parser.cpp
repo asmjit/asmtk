@@ -480,6 +480,7 @@ static const TestEntry testEntries[] = {
   X86_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x6D\x48\xCF\x4C\x11\x01"                 , "vgf2p8mulb zmm1, zmm2, zmmword ptr [ecx+edx+64]"),
   X86_PASS(RELOC_BASE_ADDRESS, "\x62\xF3\xED\x48\xCE\x4C\x11\x01\x0F"             , "vgf2p8affineqb zmm1, zmm2, zmmword ptr [ecx+edx+64], 15"),
   X86_PASS(RELOC_BASE_ADDRESS, "\x62\xF3\xED\x48\xCF\x4C\x11\x01\x0F"             , "vgf2p8affineinvqb zmm1, zmm2, zmmword ptr [ecx+edx+64], 15"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x67\x48\x68\x24\x6D\x00\xF8\xFF\xFF"     , "vp2intersectd k4, k5, zmm3, zmmword ptr [ebp*2 - 2048]"),
 
   // 64-bit AVX+ and AVX512+ instructions.
   X64_PASS(RELOC_BASE_ADDRESS, "\xC5\xF9\x6E\x5A\x10"                             , "vmovd xmm3, dword ptr [rdx+0x10]"),
@@ -580,6 +581,11 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\xCD\x48\x16\xF8"                         , "vpermpd zmm7, zmm6, zmm0"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x4D\x16\xF9"                             , "vpermps ymm7, ymm6, ymm1"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x4D\x48\x16\xF9"                         , "vpermps zmm7, zmm6, zmm1"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x62\x92\x47\x20\x68\xF0"                         , "vp2intersectd k6, k7, ymm23, ymm24"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x62\xB2\x47\x20\x68\xB4\xF5\x00\x00\x00\x10"     , "vp2intersectd k6, k7, ymm23, [rbp + r14*8 + 268435456]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x47\x30\x68\x35\x00\x00\x00\x00"         , "vp2intersectd k6, k7, ymm23, dword ptr [rip]{1to8}"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x47\x20\x68\x34\x6D\x00\xFC\xFF\xFF"     , "vp2intersectd k6, k7, ymm23, ymmword ptr [rbp*2 - 1024]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF2\x47\x20\x68\x71\x7F"                     , "vp2intersectd k6, k7, ymm23, ymmword ptr [rcx + 4064]"),
 
   // 32-bit jmp/call/ret.
   X86_PASS(0x0000000077513BEE, "\xEB\xFE"                                         , "JMP SHORT 0x77513BEE"),
@@ -817,6 +823,102 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xD9"                                     , "vmmcall"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xD8"                                     , "vmrun rax"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xDB"                                     , "vmsave rax"),
+
+  // 32-bit MONITOR & MWAIT instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC8"                                     , "monitor"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC8"                                     , "monitor [eax], ecx, edx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFA"                                     , "monitorx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFA"                                     , "monitorx [eax], ecx, edx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC9"                                     , "mwait"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC9"                                     , "mwait eax, ecx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFB"                                     , "mwaitx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFB"                                     , "mwaitx eax, ecx, ebx"),
+
+  // 64-bit MONITOR & MWAIT instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC8"                                     , "monitor"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC8"                                     , "monitor [rax], ecx, edx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFA"                                     , "monitorx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFA"                                     , "monitorx [rax], ecx, edx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC9"                                     , "mwait"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC9"                                     , "mwait eax, ecx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFB"                                     , "mwaitx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFB"                                     , "mwaitx eax, ecx, ebx"),
+
+  // 32-bit WAITPKG instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\xAE\xF0"                                 , "umonitor [eax]"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF7"                                 , "tpause edi"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF7"                                 , "tpause edi, edx, eax"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\xAE\xF7"                                 , "umwait edi"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\xAE\xF7"                                 , "umwait edi, edx, eax"),
+
+  // 64-bit WAITPKG instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\xAE\xF0"                                 , "umonitor [rax]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF7"                                 , "tpause edi"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF7"                                 , "tpause edi, edx, eax"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\xAE\xF7"                                 , "umwait edi"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\xAE\xF7"                                 , "umwait edi, edx, eax"),
+
+  // 32-bit ENQCMD instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x38\xF8\x01"                             , "enqcmd [eax], [ecx]"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x38\xF8\x01"                             , "enqcmds [eax], [ecx]"),
+
+  // 64-bit ENQCMD instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x38\xF8\x01"                             , "enqcmd [rax], [rcx]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x38\xF8\x01"                             , "enqcmds [rax], [rcx]"),
+
+  // 32-bit PCOMMIT/MCOMMIT instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xFA"                                 , "mcommit"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF8"                                 , "pcommit"),
+
+  // 64-bit PCOMMIT/MCOMMIT instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xFA"                                 , "mcommit"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF8"                                 , "pcommit"),
+
+  // 32-bit PCONFIG instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC5"                                     , "pconfig"),
+
+  // 64-bit PCONFIG instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC5"                                     , "pconfig"),
+
+  // 32-bit SERIALIZE instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xE8"                                     , "serialize"),
+
+  // 64-bit SERIALIZE instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xE8"                                     , "serialize"),
+
+  // 32-bit TSXLDTRK instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE8"                                 , "xsusldtrk"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE9"                                 , "xresldtrk"),
+
+  // 64-bit TSXLDTRK instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE8"                                 , "xsusldtrk"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE9"                                 , "xresldtrk"),
+
+  // 64-bit AMX instructions (some tests taken from LLVM assembler tests).
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x78\x49\x00"                             , "ldtilecfg [rax]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xA2\x78\x49\x84\xF5\x00\x00\x00\x10"         , "ldtilecfg [rbp + r14*8 + 268435456]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xC2\x78\x49\x84\x80\x23\x01\x00\x00"         , "ldtilecfg [r8 + rax*4 + 291]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x78\x49\x05\x00\x00\x00\x00"             , "ldtilecfg [rip]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x79\x49\x00"                             , "sttilecfg [rax]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xA2\x79\x49\x84\xF5\x00\x00\x00\x10"         , "sttilecfg [rbp + r14*8 + 268435456]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xC2\x79\x49\x84\x80\x23\x01\x00\x00"         , "sttilecfg [r8 + rax*4 + 291]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x7B\x4B\x0C\x88"                         , "tileloadd tmm1, [rax + rcx*4]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\x82\x7B\x4B\x4C\x08\x01"                     , "tileloadd tmm1, [r8 + r9 + 1]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xA2\x7B\x4B\xB4\xF5\x00\x00\x00\x10"         , "tileloadd tmm6, [rbp + r14*8 + 268435456]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xC2\x7B\x4B\x9C\x80\x23\x01\x00\x00"         , "tileloadd tmm3, [r8 + rax*4 + 291]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x7B\x4B\x1C\x6D\xE0\xFF\xFF\xFF"         , "tileloadd tmm3, [rbp*2 - 32]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x7B\x4B\x64\x23\x40"                     , "tileloadd tmm4, [rbx + 64]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xA2\x7A\x4B\xB4\xF5\x00\x00\x00\x10"         , "tilestored [rbp + r14*8 + 268435456], tmm6"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x7b\x49\xd8"                             , "tilezero tmm3"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x7b\x49\xf0"                             , "tilezero tmm6"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x6A\x5C\xC1"                             , "tdpbf16ps tmm0, tmm1, tmm2"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x72\x5C\xDA"                             , "tdpbf16ps tmm3, tmm2, tmm1"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x5A\x5C\xF5"                             , "tdpbf16ps tmm6, tmm5, tmm4"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x6B\x5E\xC1"                             , "tdpbssd tmm0, tmm1, tmm2"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x6A\x5E\xC1"                             , "tdpbsud tmm0, tmm1, tmm2"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x69\x5E\xC1"                             , "tdpbusd tmm0, tmm1, tmm2"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x68\x5E\xC1"                             , "tdpbuud tmm0, tmm1, tmm2"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x78\x49\xC0"                             , "tilerelease"),
 
   // 32-bit malformed input - should cause either parsing or validation error.
   X86_FAIL(0x0000000000001000, "short jmp 0x2000"),

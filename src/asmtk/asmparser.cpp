@@ -255,6 +255,11 @@ TrySpBpSiDi:
     s += 3;
     rType = x86::Reg::kTypeBnd;
   }
+  // [TMM?]
+  else if (c0 == 't' && c1 == 'm' && c2 == 'm') {
+    s += 3;
+    rType = x86::Reg::kTypeTmm;
+  }
   // [CR?]
   else if (c0 == 'c' && c1 == 'r') {
     s += 2;
@@ -271,22 +276,27 @@ TrySpBpSiDi:
 
   // Parse the register index.
   rId = uint32_t(s[0]) - '0';
-  if (rId >= 10) return false;
+  if (rId >= 10)
+    return false;
 
   if (++s < sEnd) {
     c0 = uint32_t(*s++) - '0';
-    if (c0 >= 10) return false;
+    if (c0 >= 10)
+      return false;
     rId = rId * 10 + c0;
 
     // Maximum register
-    if (rId >= 32) return false;
+    if (rId >= 32)
+      return false;
   }
 
   // Fail if the whole input wasn't parsed.
-  if (s != sEnd) return false;
+  if (s != sEnd)
+    return false;
 
   // Fail if the register index is greater than allowed.
-  if (rId >= x86::opData.archRegs.regCount[rType]) return false;
+  if (rId >= x86::opData.archRegs.regCount[rType])
+    return false;
 
 Done:
   op._initReg(x86::opData.archRegs.regInfo[rType].signature(), rId);
