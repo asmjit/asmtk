@@ -282,20 +282,33 @@ static const TestEntry testEntries[] = {
   // 32-bit NOP.
   X86_PASS(RELOC_BASE_ADDRESS, "\x90"                                             , "nop"),
   X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\x1F\x04\x00"                             , "nop word ptr [eax+eax]"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\x1F\x04\x00"                             , "nop word ptr [eax+eax], ax"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\x1F\x1C\x00"                             , "nop word ptr [eax+eax], bx"),
   X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x1F\x04\x00"                                 , "nop dword ptr [eax+eax]"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x1F\x04\x00"                                 , "nop dword ptr [eax+eax], eax"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x1F\x1C\x00"                                 , "nop dword ptr [eax+eax], ebx"),
 
   // 64-bit NOP.
   X64_PASS(RELOC_BASE_ADDRESS, "\x90"                                             , "nop"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\x1F\x04\x00"                             , "nop word ptr [rax+rax]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\x1F\x04\x00"                             , "nop word ptr [rax+rax], ax"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\x1F\x1C\x00"                             , "nop word ptr [rax+rax], bx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x1F\x04\x00"                                 , "nop dword ptr [rax+rax]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x1F\x04\x00"                                 , "nop dword ptr [rax+rax], eax"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x1F\x1C\x00"                                 , "nop dword ptr [rax+rax], ebx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x48\x0F\x1F\x04\x00"                             , "nop qword ptr [rax+rax]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x48\x0F\x1F\x04\x00"                             , "nop qword ptr [rax+rax], rax"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x48\x0F\x1F\x1C\x00"                             , "nop qword ptr [rax+rax], rbx"),
 
-  // 32-bit XACQUIRE|XRELEASE.
+  // 32-bit XACQUIRE|XRELEASE|RTM.
   X86_PASS(RELOC_BASE_ADDRESS, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xC6\xF8\x11"                                     , "xabort 0x11"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xF2\xF0\x01\x08"                                 , "xacquire lock add dword [eax], ecx"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xF3\xF0\x01\x08"                                 , "xrelease lock add dword [eax], ecx"),
 
-  // 64-bit XACQUIRE|XRELEASE.
+  // 64-bit XACQUIRE|XRELEASE|RTM.
   X64_PASS(RELOC_BASE_ADDRESS, "\xC7\xF8\xFA\xFF\xFF\xFF"                         , "L1: xbegin L1"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC6\xF8\x11"                                     , "xabort 0x11"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xF2\xF0\x48\x01\x08"                             , "xacquire lock add qword [rax], rcx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xF3\xF0\x48\x01\x08"                             , "xrelease lock add qword [rax], rcx"),
 
@@ -904,12 +917,6 @@ static const TestEntry testEntries[] = {
   // 64-bit TSXLDTRK instructions.
   X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE8"                                 , "xsusldtrk"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE9"                                 , "xresldtrk"),
-
-  // 32-bit RTM instructions.
-  X86_PASS(RELOC_BASE_ADDRESS, "\xC6\xF8\x11"                                     , "xabort 0x11"),
-
-  // 64-bit RTM instructions.
-  X64_PASS(RELOC_BASE_ADDRESS, "\xC6\xF8\x11"                                     , "xabort 0x11"),
 
   // 64-bit CET_SS instructions.
   X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\xAE\x34\x25\xF0\x1C\xF0\x1C"             , "clrssbsy [485498096]"),
