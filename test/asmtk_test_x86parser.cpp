@@ -61,9 +61,10 @@ struct TestEntry {
 
 #define RELOC_BASE_ADDRESS Globals::kNoBaseAddress
 
-// Some tests are unique, some were derived from other asm-related projects:
+// Some tests are unique, some were derived from other assembler tests:
 //   - Capstone - https://github.com/aquynh/capstone
 //   - XEDParse - https://github.com/x64dbg/XEDParse
+//   - LLVM     - https://github.com/llvm/llvm-project/tree/master/llvm/test/MC/X86
 static const TestEntry testEntries[] = {
   // 32-bit constants parsing.
   X86_PASS(RELOC_BASE_ADDRESS, "\xB8\x00\x00\x00\x00"                             , "mov eax, 0"),
@@ -866,13 +867,23 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x38\xF8\x01"                             , "enqcmd [rax], [rcx]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x38\xF8\x01"                             , "enqcmds [rax], [rcx]"),
 
-  // 32-bit PCOMMIT/MCOMMIT instructions.
-  X86_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xFA"                                 , "mcommit"),
-  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF8"                                 , "pcommit"),
+  // 32-bit CL... instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFC"                                     , "clzero"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x0F\xAE\x7A\x40"                                 , "clflush [edx + 64]"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\x7A\x40"                             , "clflushopt [edx + 64]"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\x72\x40"                             , "clwb [edx + 64]"),
 
-  // 64-bit PCOMMIT/MCOMMIT instructions.
+  // 64-bit CL... instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xFC"                                     , "clzero"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x0F\xAE\x7A\x40"                                 , "clflush [rdx + 64]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\x7A\x40"                             , "clflushopt [rdx + 64]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\x72\x40"                             , "clwb [rdx + 64]"),
+
+  // 32-bit MCOMMIT instruction.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xFA"                                 , "mcommit"),
+
+  // 64-bit MCOMMIT instruction.
   X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xFA"                                 , "mcommit"),
-  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x0F\xAE\xF8"                                 , "pcommit"),
 
   // 32-bit PCONFIG instructions.
   X86_PASS(RELOC_BASE_ADDRESS, "\x0F\x01\xC5"                                     , "pconfig"),
@@ -894,7 +905,31 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE8"                                 , "xsusldtrk"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xF2\x0F\x01\xE9"                                 , "xresldtrk"),
 
-  // 64-bit AMX instructions (some tests taken from LLVM assembler tests).
+  // 32-bit RTM instructions.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xC6\xF8\x11"                                     , "xabort 0x11"),
+
+  // 64-bit RTM instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\xC6\xF8\x11"                                     , "xabort 0x11"),
+
+  // 64-bit CET_SS instructions.
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\xAE\x34\x25\xF0\x1C\xF0\x1C"             , "clrssbsy [485498096]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\xAE\x32"                                 , "clrssbsy [rdx]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\xAE\x72\x40"                             , "clrssbsy [rdx + 64]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xE8"                                 , "setssbsy"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\xEA"                                 , "saveprevssp"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x41\x0F\x1E\xCD"                             , "rdsspd r13d"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x49\x0F\x1E\xCF"                             , "rdsspq r15"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x41\x0F\xAE\xED"                             , "incsspd r13d"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x49\x0F\xAE\xEF"                             , "incsspq r15"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\x2C\x25\xF0\x1C\xF0\x1C"             , "rstorssp [485498096]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\x2A"                                 , "rstorssp [rdx]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xF3\x0F\x01\x6A\x40"                             , "rstorssp [rdx + 64]"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x4C\x0F\x38\xF6\x3C\x25\xF0\x1C\xF0\x1C"         , "wrssq [485498096], r15"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x4C\x0F\x38\xF6\x3A"                             , "wrssq [rdx], r15"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x4C\x0F\x38\xF5\x3C\x25\xF0\x1C\xF0\x1C"     , "wrussq [485498096], r15"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x4C\x0F\x38\xF5\x3A"                         , "wrussq [rdx], r15"),
+
+  // 64-bit AMX instructions.
   X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xE2\x78\x49\x00"                             , "ldtilecfg [rax]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xA2\x78\x49\x84\xF5\x00\x00\x00\x10"         , "ldtilecfg [rbp + r14*8 + 268435456]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xC4\xC2\x78\x49\x84\x80\x23\x01\x00\x00"         , "ldtilecfg [r8 + rax*4 + 291]"),
