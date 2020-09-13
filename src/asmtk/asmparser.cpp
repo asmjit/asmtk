@@ -108,11 +108,22 @@ static void strToLower(uint8_t* dst, const uint8_t* src, size_t size) noexcept{
 #define COMB_CHAR_4(a, b, c, d) \
   ((uint32_t(a) << 24) | (uint32_t(b) << 16) | (uint32_t(c) << 8) | uint32_t(d))
 
-static bool x86ParseRegister(Operand_& op, const uint8_t* s, size_t size) noexcept {
+static uint32_t x86RegisterCount(uint32_t archId, uint32_t regType) noexcept {
+  if (archId == Environment::kArchX86)
+    return 8;
+  else if (regType >= x86::Reg::kTypeXmm && regType <= x86::Reg::kTypeZmm)
+    return 32;
+  else
+    return 16;
+}
+
+static bool x86ParseRegister(AsmParser& parser, Operand_& op, const uint8_t* s, size_t size) noexcept {
   constexpr uint32_t kMinSize = 2;
   constexpr uint32_t kMaxSize = 5;
 
-  if (size < kMinSize || size > kMaxSize) return false;
+  if (size < kMinSize || size > kMaxSize)
+    return false;
+
   const uint8_t* sEnd = s + size;
 
   uint32_t c0 = Support::asciiToLower<uint32_t>(s[0]);
@@ -286,7 +297,7 @@ TrySpBpSiDi:
     rId = rId * 10 + c0;
 
     // Maximum register
-    if (rId >= 32)
+    if (rId >= x86RegisterCount(parser.emitter()->arch(), rType))
       return false;
   }
 
@@ -295,11 +306,11 @@ TrySpBpSiDi:
     return false;
 
   // Fail if the register index is greater than allowed.
-  if (rId >= x86::opData.archRegs.regCount[rType])
+  if (rId >= 32)
     return false;
 
 Done:
-  op._initReg(x86::opData.archRegs.regInfo[rType].signature(), rId);
+  op._initReg(ArchTraits::byArch(Environment::kArchX64).regTypeToSignature(rType), rId);
   return true;
 }
 
@@ -436,7 +447,7 @@ static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) 
   // Symbol, could be register, memory operand size, or label.
   if (type == AsmToken::kSym) {
     // Try register.
-    if (x86ParseRegister(dst, token->data, token->size)) {
+    if (x86ParseRegister(parser, dst, token->data, token->size)) {
       if (!dst.as<x86::Reg>().isSReg())
         return kErrorOk;
 
@@ -473,7 +484,7 @@ static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) 
       // Parse segment prefix otherwise.
       if (type == AsmToken::kSym) {
         // Segment register.
-        if (!x86ParseRegister(seg, token->data, token->size) || !seg.as<x86::Reg>().isSReg())
+        if (!x86ParseRegister(parser, seg, token->data, token->size) || !seg.as<x86::Reg>().isSReg())
           return DebugUtils::errored(kErrorInvalidAddress);
 
         type = parser.nextToken(token);
@@ -512,11 +523,11 @@ MemOp:
         addrMode.addLowercasedChar(token->data, 2);
 
         if (addrMode.test('a', 'b', 's')) {
-          flags |= BaseMem::kSignatureMemAbs;
+          flags |= x86::Mem::kSignatureMemAbs;
           type = parser.nextToken(token);
         }
         else if (addrMode.test('r', 'e', 'l')) {
-          flags |= BaseMem::kSignatureMemRel;
+          flags |= x86::Mem::kSignatureMemRel;
           type = parser.nextToken(token);
         }
       }
@@ -532,7 +543,7 @@ MemOp:
           return DebugUtils::errored(kErrorInvalidAddress);
 
         Operand op;
-        if (!x86ParseRegister(op, token->data, token->size)) {
+        if (!x86ParseRegister(parser, op, token->data, token->size)) {
           // No label after 'base' is allowed.
           if (!base.isNone())
             return DebugUtils::errored(kErrorInvalidAddress);
@@ -1014,8 +1025,8 @@ static Error x86FixupInstruction(AsmParser& parser, BaseInst& inst, Operand_* op
           case x86::Inst::kIdCmps: operands[0] = emitter->ptr_zsi(); operands[1] = emitter->ptr_zdi(); break;
           case x86::Inst::kIdMovs: operands[0] = emitter->ptr_zdi(); operands[1] = emitter->ptr_zsi(); break;
           case x86::Inst::kIdLods:
-          case x86::Inst::kIdScas: operands[0] = BaseReg(sign, x86::Gp::kIdAx); operands[1] = emitter->ptr_zdi(); break;
-          case x86::Inst::kIdStos: operands[0] = emitter->ptr_zdi(); operands[1] = BaseReg(sign, x86::Gp::kIdAx); break;
+          case x86::Inst::kIdScas: operands[0] = BaseReg::fromSignatureAndId(sign, x86::Gp::kIdAx); operands[1] = emitter->ptr_zdi(); break;
+          case x86::Inst::kIdStos: operands[0] = emitter->ptr_zdi(); operands[1] = BaseReg::fromSignatureAndId(sign, x86::Gp::kIdAx); break;
         }
       }
 
