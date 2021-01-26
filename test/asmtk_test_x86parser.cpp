@@ -205,6 +205,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(0x1122334455667788, "\x89\x05\xFA\xFF\xFF\xFF"                         , "mov [0x1122334455667788], eax"),
   X64_PASS(0x1122334455667788, "\x89\x05\xFA\xFF\xFF\xFF"                         , "mov [rel 0x1122334455667788], eax"),
   X64_PASS(0x1122334455667788, "\xA3\x88\x77\x66\x55\x44\x33\x22\x11"             , "mov [abs 0x1122334455667788], eax"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x48\xA1\xEF\xCD\xAB\x89\x67\x45\x23\x01"         , "movabs rax, [0x123456789ABCDEF]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\xBE\x07"                                     , "movsx eax, byte ptr [rdi]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x0F\xBE\x07"                                 , "movsx rax, byte ptr [rdi]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\xBF\x07"                                     , "movsx eax, word ptr [rdi]"),

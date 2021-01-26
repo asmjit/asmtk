@@ -33,9 +33,7 @@ enum X86Directive : uint32_t {
 enum X86Alias : uint32_t {
   kX86AliasStart = 0x00010000u,
 
-  kX86AliasMovabs = kX86AliasStart,
-
-  kX86AliasInsb,
+  kX86AliasInsb = kX86AliasStart,
   kX86AliasInsd,
   kX86AliasInsw,
 
@@ -699,6 +697,7 @@ static uint32_t x86ParseInstOption(const uint8_t* s, size_t size) noexcept {
     if (word.test('b', 'n', 'd')) return x86::Inst::kOptionRepne;
     if (word.test('r', 'e', 'p')) return x86::Inst::kOptionRep;
     if (word.test('r', 'e', 'x')) return x86::Inst::kOptionRex;
+    if (word.test('v', 'e', 'x')) return x86::Inst::kOptionVex;
     return 0;
   }
 
@@ -891,11 +890,6 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t size) noexcept {
     return x86::Inst::kIdNone;
   }
 
-  word.addLowercasedChar(s, 5);
-  if (size == 6) {
-    if (word.test('m', 'o', 'v', 'a', 'b', 's')) return kX86AliasMovabs;
-  }
-
   return x86::Inst::kIdNone;
 }
 
@@ -957,7 +951,6 @@ static Error x86FixupInstruction(AsmParser& parser, BaseInst& inst, Operand_* op
   uint32_t i;
 
   uint32_t& instId = inst._id;
-  uint32_t& options = inst._options;
 
   if (instId >= kX86AliasStart) {
     x86::Emitter* emitter = static_cast<x86::Emitter*>(parser._emitter);
@@ -965,12 +958,6 @@ static Error x86FixupInstruction(AsmParser& parser, BaseInst& inst, Operand_* op
     bool isStr = false;
 
     switch (instId) {
-      case kX86AliasMovabs:
-        // 'movabs' is basically the longest 'mov'.
-        instId = x86::Inst::kIdMov;
-        options |= x86::Inst::kOptionLongForm;
-        break;
-
       case kX86AliasInsb: memSize = 1; instId = x86::Inst::kIdIns; isStr = true; break;
       case kX86AliasInsd: memSize = 4; instId = x86::Inst::kIdIns; isStr = true; break;
       case kX86AliasInsw: memSize = 2; instId = x86::Inst::kIdIns; isStr = true; break;
