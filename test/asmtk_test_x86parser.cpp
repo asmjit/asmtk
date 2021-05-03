@@ -91,10 +91,10 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\xBB\x00\x00\x00\x00\x00\x00\x00\x00"         , "movabs rbx, 0"),
 
   // 32-bit base instructions.
-  X86_PASS(RELOC_BASE_ADDRESS, "\x8A\xE0"                                         , "mov ah, al"),
-  X86_PASS(RELOC_BASE_ADDRESS, "\x8A\xF0"                                         , "mov dh, al"),
-  X86_PASS(RELOC_BASE_ADDRESS, "\x8B\xC3"                                         , "mov EAX, Ebx"),
-  X86_PASS(RELOC_BASE_ADDRESS, "\x89\xD8"                                         , "modmr mov eax, ebx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x88\xC4"                                         , "mov ah, al"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x88\xC6"                                         , "mov dh, al"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x89\xD8"                                         , "mov EAX, Ebx"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\x8B\xC3"                                         , "modrm mov eax, ebx"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xB8\xFF\xFF\xFF\xFF"                             , "mov eax, 0xFFFFFFFF"),
   X86_PASS(RELOC_BASE_ADDRESS, "\x8C\xE0"                                         , "mov eax, fs"),
   X86_PASS(RELOC_BASE_ADDRESS, "\x8E\xE0"                                         , "mov fs, eax"),
@@ -186,8 +186,8 @@ static const TestEntry testEntries[] = {
   X86_PASS(RELOC_BASE_ADDRESS, "\xC9"                                             , "leave"),
 
   // 64-bit base instructions.
-  X64_PASS(RELOC_BASE_ADDRESS, "\x8A\xE0"                                         , "mov ah, al"),
-  X64_PASS(RELOC_BASE_ADDRESS, "\x8A\xF0"                                         , "mov dh, al"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x88\xC4"                                         , "mov ah, al"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x88\xC6"                                         , "mov dh, al"),
   X64_PASS(RELOC_BASE_ADDRESS, "\xB8\xE8\x03\x00\x00"                             , "mov eax, 1000"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\x20\xC0"                                     , "mov rax, cr0"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x44\x0F\x20\xC0"                                 , "mov rax, cr8"),
@@ -212,7 +212,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x0F\xBF\x07"                                 , "movsx rax, word ptr [rdi]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x63\x07"                                     , "movsxd rax, [rdi]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x63\x07"                                     , "movsxd rax, dword ptr [rdi]"),
-  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x63\xC3"                                     , "movsxd ax, bx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x63\xC3"                                     , "movsxd ax, ebx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x63\xC3"                                         , "movsxd eax, ebx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x63\xC3"                                     , "movsxd rax, ebx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\xB6\xC6"                                     , "movzx eax, dh"),

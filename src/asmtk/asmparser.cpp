@@ -328,7 +328,8 @@ static uint32_t x86ParseSize(const uint8_t* s, size_t size) noexcept {
 
   if (suffix.test('w', 'o', 'r', 'd')) {
     // Parsed 'word'.
-    if (size == 4) return 2;
+    if (size == 4)
+      return 2;
 
     // Sizes of length '5':
     ParserUtils::WordParser wordSize;
@@ -366,8 +367,18 @@ static uint32_t x86ParseSize(const uint8_t* s, size_t size) noexcept {
   }
 
   // Parsed 'byte'.
-  if (suffix.test('b', 'y', 't', 'e'))
-    return size == 4 ? 1 : 0;
+  if (suffix.test('b', 'y', 't', 'e')) {
+    if (size == 4)
+      return 1;
+
+    // Sizes of length '5':
+    ParserUtils::WordParser wordSize;
+    wordSize.addLowercasedChar(s, 0);
+
+    if (size == 5) {
+      if (wordSize.test('t')) return 10;
+    }
+  }
 
   return 0;
 }
@@ -408,6 +419,7 @@ static Error asmHandleSymbol(AsmParser& parser, Operand_& dst, const uint8_t* na
 
   if (!label.isValid()) {
     if (parser._unknownSymbolHandler) {
+      dst.reset();
       ASMJIT_PROPAGATE(parser._unknownSymbolHandler(&parser, static_cast<Operand*>(&dst), reinterpret_cast<const char*>(name), nameSize));
       if (!dst.isNone())
         return kErrorOk;
@@ -716,6 +728,7 @@ static uint32_t x86ParseInstOption(const uint8_t* s, size_t size) noexcept {
   // Options of length '5':
   word.addLowercasedChar(s, 4);
   if (size == 5) {
+    if (word.test('m', 'o', 'd', 'r', 'm')) return x86::Inst::kOptionModRM;
     if (word.test('m', 'o', 'd', 'm', 'r')) return x86::Inst::kOptionModMR;
     if (word.test('r', 'e', 'p', 'n', 'e')) return x86::Inst::kOptionRepne;
     if (word.test('r', 'e', 'p', 'n', 'z')) return x86::Inst::kOptionRepne;
