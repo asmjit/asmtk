@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <asmjit/x86.h>
 #include "./asmtk.h"
 #include "./cmdline.h"
 
@@ -71,17 +72,16 @@ int main(int argc, char* argv[]) {
   const char* archArg = cmd.valueOf("--arch");
   const char* baseArg = cmd.valueOf("--base");
 
-  Environment environment = hostEnvironment();
-
-  uint32_t arch = Environment::kArchX64;
+  Environment environment = Environment::host();
+  Arch arch = environment.arch();
   uint64_t baseAddress = Globals::kNoBaseAddress;
 
   if (archArg) {
     if (strcmp(archArg, "x86") == 0) {
-      environment.setArch(Environment::kArchX86);
+      arch = Arch::kX86;
     }
     else if (strcmp(archArg, "x64") == 0) {
-      environment.setArch(Environment::kArchX64);
+      arch = Arch::kX64;
     }
     else {
       printf("Invalid --arch parameter\n");
@@ -89,12 +89,12 @@ int main(int argc, char* argv[]) {
     }
   }
   else {
-    archArg = environment.arch() == Environment::kArchX86 ? "x86" : "x64";
+    archArg = arch == Arch::kX86 ? "x86" : "x64";
   }
 
   if (baseArg) {
     size_t size = strlen(baseArg);
-    size_t maxSize = arch == Environment::kArchX64 ? 16 : 8;
+    size_t maxSize = environment.arch() == Arch::kX64 ? 16 : 8;
 
     if (!size || size > maxSize || !hexToU64(baseAddress, baseArg, size)) {
       printf("Invalid --base parameter\n");
@@ -118,7 +118,7 @@ int main(int argc, char* argv[]) {
   environment.setArch(arch);
 
   StringLogger logger;
-  logger.addFlags(FormatOptions::kFlagMachineCode);
+  logger.addFlags(FormatFlags::kMachineCode);
 
   CodeHolder code;
   code.init(environment, baseAddress);
@@ -147,7 +147,7 @@ int main(int argc, char* argv[]) {
 
     if (isCommand(input, ".clear")) {
       // Detaches everything.
-      code.reset(false);
+      code.reset(ResetPolicy::kSoft);
       code.init(environment, baseAddress);
       code.setLogger(&logger);
       code.attach(&a);

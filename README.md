@@ -41,7 +41,7 @@ using namespace asmtk;
 
 // Used to print binary code as hex.
 static void dumpCode(const uint8_t* buf, size_t size) {
-  enum { kCharsPerLine = 39 };
+  constexpr uint32_t kCharsPerLine = 39;
   char hex[kCharsPerLine * 2 + 1];
 
   size_t i = 0;
@@ -66,11 +66,11 @@ static void dumpCode(const uint8_t* buf, size_t size) {
 
 int main(int argc, char* argv[]) {
   // Setup CodeHolder for X64.
-  CodeInfo ci(Environment::kArchX64);
+  Environment env(Arch::kX64);
   CodeHolder code;
-  code.init(ci);
+  code.init(emv);
 
-  // Attach x86::Assembler `code`.
+  // Attach x86::Assembler to `code`.
   x86::Assembler a(&code);
 
   // Create AsmParser that will emit to x86::Assembler.
@@ -96,15 +96,6 @@ int main(int argc, char* argv[]) {
 ```
 
 You should check out the test directory to see how AsmTK integrates with AsmJit.
-
-Support
--------
-
-Please consider a donation if you use the project and would like to keep it active in the future.
-
-  * BTC: 14dEp5h8jYSxgXB9vcjE8eh78uweD76o7W
-  * ETH: 0xd4f0b9424cF31DF5a5359D029CF3A65c500a581E
-  * Please contact the author if you would still like to donate through a different channel or use a different crypto-currency.
 
 Authors & Maintainers
 ---------------------

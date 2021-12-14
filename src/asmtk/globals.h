@@ -7,7 +7,7 @@
 #ifndef _ASMTK_GLOBALS_H
 #define _ASMTK_GLOBALS_H
 
-#include <asmjit/asmjit.h>
+#include <asmjit/core.h>
 
 #include <stdint.h>
 #include <algorithm>

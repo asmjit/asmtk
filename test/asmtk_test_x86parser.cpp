@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <asmjit/x86.h>
 #include "./asmtk.h"
 #include "./cmdline.h"
 
@@ -11,7 +12,7 @@ using namespace asmtk;
 
 struct TestEntry {
   uint64_t baseAddress;
-  uint8_t arch;
+  Arch arch;
   uint8_t mustPass;
   uint8_t asmSize;
   uint8_t mcSize;
@@ -21,7 +22,7 @@ struct TestEntry {
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
   BASE,                                            \
-  Environment::kArchX86,                           \
+  Arch::kX86,                                      \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   uint8_t(sizeof(MACHINE_CODE) - 1),               \
@@ -31,7 +32,7 @@ struct TestEntry {
 
 #define X86_FAIL(BASE, ASM_STRING) {               \
   BASE,                                            \
-  Environment::kArchX86,                           \
+  Arch::kX86,                                      \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
@@ -41,7 +42,7 @@ struct TestEntry {
 
 #define X64_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
   BASE,                                            \
-  Environment::kArchX64,                           \
+  Arch::kX64,                                      \
   true,                                            \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   uint8_t(sizeof(MACHINE_CODE) - 1),               \
@@ -51,7 +52,7 @@ struct TestEntry {
 
 #define X64_FAIL(BASE, ASM_STRING) {               \
   BASE,                                            \
-  Environment::kArchX64,                           \
+  Arch::kX64,                                      \
   false,                                           \
   uint8_t(sizeof(ASM_STRING  ) - 1),               \
   0,                                               \
@@ -212,7 +213,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x0F\xBF\x07"                                 , "movsx rax, word ptr [rdi]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x63\x07"                                     , "movsxd rax, [rdi]"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x63\x07"                                     , "movsxd rax, dword ptr [rdi]"),
-  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x63\xC3"                                     , "movsxd ax, ebx"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x66\x63\xC3"                                     , "movsxd ax, bx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x63\xC3"                                         , "movsxd eax, ebx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x48\x63\xC3"                                     , "movsxd rax, ebx"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x0F\xB6\xC6"                                     , "movzx eax, dh"),
@@ -566,7 +567,7 @@ static const TestEntry testEntries[] = {
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF1\x6C\x1F\xC2\x54\x98\x40\x0F"             , "vcmpps k2 {k7}, xmm2, dword ptr [rax+rbx*4+256] {1to4}, 15"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF1\x6C\x3F\xC2\x54\x98\x40\x0F"             , "vcmpps k2 {k7}, ymm2, dword ptr [rax+rbx*4+256] {1to8}, 15"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF1\x6C\x5F\xC2\x54\x98\x40\x0F"             , "vcmpps k2 {k7}, zmm2, dword ptr [rax+rbx*4+256] {1to16}, 15"),
-  X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF1\xFD\x58\xC2\xC1\x00"                     , "vcmppd k0, zmm0, zmm1, 0x00, {sae}"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\x62\xF1\xFD\x18\xC2\xC1\x00"                     , "vcmppd k0, zmm0, zmm1, 0x00, {sae}"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\x01\xFD\x18\x2E\xF5"                         , "vucomisd xmm30, xmm29  {sae}"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\x01\xFD\x18\x2E\xF5"                         , "vucomisd xmm30, xmm29, {sae}"),
   X64_PASS(RELOC_BASE_ADDRESS, "\x62\x01\x7C\x18\x2E\xF5"                         , "vucomiss xmm30, xmm29  {sae}"),
@@ -1042,7 +1043,7 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
 
   for (size_t i = 0; i < count; i++) {
     const TestEntry& entry = entries[i];
-    const char* arch = entry.arch == Environment::kArchX86 ? "X86" : "X64";
+    const char* arch = entry.arch == Arch::kX86 ? "X86" : "X64";
 
     // Initialize Environment with the requested architecture.
     Environment environment;

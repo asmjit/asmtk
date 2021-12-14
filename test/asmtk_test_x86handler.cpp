@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <asmjit/x86.h>
 #include "./asmtk.h"
 
 using namespace asmjit;
@@ -32,11 +33,11 @@ static Error ASMJIT_CDECL unknownSymbolHandler(AsmParser* parser, Operand* dst, 
 int main(int argc, char* argv[]) {
   // Initialize Environment with X64 architecture.
   Environment environment;
-  environment.init(Environment::kArchX64);
+  environment.init(Arch::kX64);
   uint32_t baseAddress = uint64_t(0x1000);
 
   FileLogger logger(stdout);
-  logger.addFlags(FormatOptions::kFlagMachineCode);
+  logger.addFlags(FormatFlags::kMachineCode);
 
   // Initialize CodeHolder.
   CodeHolder code;
