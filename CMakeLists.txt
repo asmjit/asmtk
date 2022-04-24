@@ -9,6 +9,8 @@ if (NOT CMAKE_PROJECT_NAME OR "${CMAKE_PROJECT_NAME}" STREQUAL "asmtk")
   project(asmtk CXX)
 endif()
 
+include(GNUInstallDirs)
+
 # =============================================================================
 # [AsmTK - Deprecated]
 # =============================================================================
@@ -35,6 +37,10 @@ if (NOT DEFINED ASMJIT_DIR)
   set(ASMJIT_DIR "${ASMTK_DIR}/../asmjit")
 endif()
 
+if (NOT DEFINED ASMJIT_EXTERNAL)
+  set(ASMJIT_EXTERNAL FALSE)
+endif()
+
 if (NOT DEFINED ASMTK_EMBED)
   set(ASMTK_EMBED FALSE)
 endif()
@@ -45,6 +51,8 @@ endif()
 
 set(ASMTK_DIR    "${ASMTK_DIR}"  CACHE PATH "Location of 'asmtk'")
 set(ASMJIT_DIR   "${ASMJIT_DIR}" CACHE PATH "Location of 'asmjit'")
+
+set(ASMJIT_EXTERNAL ${ASMJIT_EXTERNAL} CACHE BOOL "External 'asmjit'")
 
 set(ASMTK_TEST   ${ASMTK_TEST}   CACHE BOOL "Build 'asmtk' test applications")
 set(ASMTK_EMBED  ${ASMTK_EMBED}  CACHE BOOL "Embed 'asmtk' library (no targets)")
@@ -98,9 +106,13 @@ if (ASMTK_EMBED OR ASMTK_STATIC)
   List(APPEND ASMTK_PRIVATE_CFLAGS "-DASMTK_STATIC")
 endif()
 
-include("${ASMJIT_DIR}/CMakeLists.txt")
-list(APPEND ASMTK_PRIVATE_CFLAGS ${ASMJIT_CFLAGS})
-list(REMOVE_DUPLICATES ASMTK_PRIVATE_CFLAGS)
+if (ASMJIT_EXTERNAL)
+  find_package(asmjit CONFIG REQUIRED)
+else()
+  include("${ASMJIT_DIR}/CMakeLists.txt")
+  list(APPEND ASMTK_PRIVATE_CFLAGS ${ASMJIT_CFLAGS})
+  list(REMOVE_DUPLICATES ASMTK_PRIVATE_CFLAGS)
+endif()
 
 # =============================================================================
 # [AsmTK - Source]
@@ -139,6 +151,7 @@ asmtk_add_source(ASMTK_SRC src ${ASMTK_SRC_LIST})
 
 message("** AsmTK Summary **")
 message("   ASMTK_DIR=${ASMTK_DIR}")
+message("   ASMJIT_EXTERNAL=${ASMJIT_EXTERNAL}")
 message("   ASMTK_TEST=${ASMTK_TEST}")
 message("   ASMTK_TARGET_TYPE=${ASMTK_TARGET_TYPE}")
 message("   ASMTK_CFLAGS=${ASMTK_CFLAGS}")
@@ -157,12 +170,43 @@ if (NOT ASMTK_EMBED)
   target_compile_options(asmtk PRIVATE ${ASMTK_PRIVATE_CFLAGS}
     $<$<CONFIG:Debug>:${ASMTK_PRIVATE_CFLAGS_DBG}>
     $<$<NOT:$<CONFIG:Debug>>:${ASMTK_PRIVATE_CFLAGS_REL}>)
-  target_link_libraries(asmtk PUBLIC AsmJit::AsmJit)
-  target_include_directories(asmtk BEFORE INTERFACE ${ASMTK_INCLUDE_DIRS})
+
+  if(ASMJIT_EXTERNAL)
+    target_link_libraries(asmtk PUBLIC ${ASMJIT_LIBRARY})
+    find_path(ASMJIT_INCLUDE_DIR NAMES asmjit/asmjit.h)
+    target_include_directories(asmtk PRIVATE ${ASMJIT_INCLUDE_DIR})
+  else()
+    target_link_libraries(asmtk PUBLIC asmjit::asmjit)
+  endif()
+
+  target_include_directories(asmtk BEFORE INTERFACE
+          $<BUILD_INTERFACE:${ASMTK_INCLUDE_DIRS}>
+          $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
+
   set_property(TARGET asmtk PROPERTY CXX_VISIBILITY_PRESET hidden)
 
   # Add AsmTK::AsmTK target (alias to asmtk).
-  add_library(AsmTK::AsmTK ALIAS asmtk)
+  add_library(asmjit::asmtk ALIAS asmtk)
+
+  # Add AsmTK install instructions (library and public headers).
+  if (NOT ASMTK_NO_INSTALL)
+    install(TARGETS asmtk
+            EXPORT asmtk-config
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+            INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    install(EXPORT asmtk-config
+            NAMESPACE asmjit::
+            DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/asmtk")
+
+    foreach(_src_file ${ASMTK_SRC_LIST})
+      if ("${_src_file}" MATCHES "\\.h$" AND NOT "${_src_file}" MATCHES "_p\\.h$")
+        get_filename_component(_src_dir ${_src_file} PATH)
+        install(FILES "${ASMTK_DIR}/src/${_src_file}" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${_src_dir}")
+      endif()
+    endforeach()
+  endif()
 
   if (ASMTK_TEST AND NOT ASMJIT_EMBED)
     set(ASMTK_SAMPLES_SRC
