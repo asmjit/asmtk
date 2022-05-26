@@ -185,8 +185,10 @@ if (NOT ASMTK_EMBED)
 
   set_property(TARGET asmtk PROPERTY CXX_VISIBILITY_PRESET hidden)
 
-  # Add AsmTK::AsmTK target (alias to asmtk).
+  # Add asmjit::asmtk target (alias to asmtk).
   add_library(asmjit::asmtk ALIAS asmtk)
+  # TODO: [CMAKE] Deprecated alias - we use projectname::libraryname convention now.
+  add_library(AsmTK::AsmTK ALIAS asmtk)
 
   # Add AsmTK install instructions (library and public headers).
   if (NOT ASMTK_NO_INSTALL)
