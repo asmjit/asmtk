@@ -14,7 +14,7 @@ jobs:
       matrix:
         include:
           - { title: "linux-lib"      , os: "ubuntu-latest" , cc: "clang"   , arch: "x64", build_type: "Release", defs: "ASMJIT_DIR=../asmjit", problem_matcher: "cpp" }
-          - { title: "windows-lib"    , os: "windows-latest", cc: "vs2019"  , arch: "x86", build_type: "Debug"  , defs: "ASMJIT_DIR=../asmjit", problem_matcher: "cpp" }
+          - { title: "windows-lib"    , os: "windows-2022"  , cc: "vs2022"  , arch: "x86", build_type: "Debug"  , defs: "ASMJIT_DIR=../asmjit", problem_matcher: "cpp" }
 
           - { title: "diag-valgrind"  , os: "ubuntu-latest" , cc: "clang"   , arch: "x64", build_type: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON", diagnostics: "valgrind" }
           - { title: "diag-scan-build", os: "ubuntu-latest" , cc: "clang"   , arch: "x64", build_type: "Debug"  , defs: "ASMJIT_DIR=../asmjit", diagnostics: "scan-build" }
