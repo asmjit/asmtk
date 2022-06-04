@@ -68,7 +68,7 @@ int main(int argc, char* argv[]) {
   // Setup CodeHolder for X64.
   Environment env(Arch::kX64);
   CodeHolder code;
-  code.init(emv);
+  code.init(env);
 
   // Attach x86::Assembler to `code`.
   x86::Assembler a(&code);
