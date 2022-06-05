@@ -34,7 +34,7 @@ int main(int argc, char* argv[]) {
   // Initialize Environment with X64 architecture.
   Environment environment;
   environment.init(Arch::kX64);
-  uint32_t baseAddress = uint64_t(0x1000);
+  uint64_t baseAddress = uint64_t(0x1000);
 
   FileLogger logger(stdout);
   logger.addFlags(FormatFlags::kMachineCode);
