@@ -106,6 +106,7 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
   uint32_t c = cur[0];
   uint32_t m = CharMap[c];
   uint32_t stateFlags = 0;
+  bool isComment = false;
 
   // Skip Whitespaces
   // ----------------
@@ -113,8 +114,11 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
   if (m == kCharSpc) {
     do {
       cur++;
-      if (c == '\n') goto NL;
-      if (cur == end) goto End;
+      if (c == '\n')
+        goto NL;
+
+      if (cur == end)
+        goto End;
 
       c = cur[0];
       m = CharMap[c];
@@ -124,7 +128,13 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
   // Skip Comment
   // ------------
 
-  if (c == ';') {
+  if (c == ';')
+    isComment = true;
+
+  if (c == '/' && size_t(end - cur) >= 2 && cur[1] == '/')
+    isComment = true;
+
+  if (isComment) {
     for (;;) {
       if (++cur == end)
         goto End;

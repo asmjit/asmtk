@@ -67,6 +67,17 @@ struct TestEntry {
 //   - XEDParse - https://github.com/x64dbg/XEDParse
 //   - LLVM     - https://github.com/llvm/llvm-project/tree/master/llvm/test/MC/X86
 static const TestEntry testEntries[] = {
+  // Comments.
+  X86_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "mov al, 0 ; Standard comment"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "mov al, 0 // C/C++ comment"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "; Standard comment\nmov al, 0"),
+  X86_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "// C/C++ comment\nmov al, 0"),
+
+  X64_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "mov al, 0 ; Standard comment"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "mov al, 0 // C/C++ comment"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "; Standard comment\nmov al, 0"),
+  X64_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "// C/C++ comment\nmov al, 0"),
+
   // 32-bit constants parsing.
   X86_PASS(RELOC_BASE_ADDRESS, "\xB8\x00\x00\x00\x00"                             , "mov eax, 0"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xB8\x00\x00\x00\x00"                             , "mov eax, 00"),

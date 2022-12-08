@@ -105,7 +105,7 @@ struct AsmToken {
 };
 
 enum class ParseFlags {
-  // No flags.
+  //! No flags.
   kNone = 0,
   //! Don't attempt to parse number (always parse symbol).
   kParseSymbol = 0x00000001u,
