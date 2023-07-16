@@ -66,7 +66,9 @@ enum X86Alias : uint32_t {
   kX86AliasStosb,
   kX86AliasStosd,
   kX86AliasStosq,
-  kX86AliasStosw
+  kX86AliasStosw,
+
+  kX86AliasJrcxz,
 };
 
 // ============================================================================
@@ -922,6 +924,8 @@ static uint32_t x86ParseAlias(const uint8_t* s, size_t size) noexcept {
     if (word.test('o', 'u', 't', 's', 'w')) return kX86AliasOutsw;
     if (word.test('o', 'u', 't', 's', 'd')) return kX86AliasOutsd;
 
+    if (word.test('j', 'r', 'c', 'x', 'z')) return kX86AliasJrcxz;
+
     return x86::Inst::kIdNone;
   }
 
@@ -1031,6 +1035,8 @@ static Error x86FixupInstruction(AsmParser& parser, BaseInst& inst, Operand_* op
       case kX86AliasStosq: memSize = 8; instId = x86::Inst::kIdStos; isStr = true; break;
       case kX86AliasStosw: memSize = 2; instId = x86::Inst::kIdStos; isStr = true; break;
         break;
+
+      case kX86AliasJrcxz: instId = x86::Inst::kIdJecxz; break;
     }
 
     if (isStr) {
