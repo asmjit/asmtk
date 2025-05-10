@@ -218,7 +218,7 @@ if (NOT ASMTK_EMBED)
 
     foreach(_target ${ASMTK_SAMPLES_SRC})
       add_executable(${_target} "${ASMTK_DIR}/test/${_target}.cpp")
-      target_link_libraries(${_target} AsmJit::AsmJit AsmTK::AsmTK)
+      target_link_libraries(${_target} asmjit::asmjit asmjit::asmtk)
       target_compile_features(${_target} PUBLIC cxx_std_11)
       set_property(TARGET ${_target} PROPERTY CXX_VISIBILITY_PRESET hidden)
     endforeach()
