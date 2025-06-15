@@ -13,36 +13,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { title: "diag-analyze"    , host: "ubuntu-latest" , arch: "x64"    , cc: "clang"   , conf: "Debug"  , diagnostics: "analyze-build", defs: "ASMJIT_DIR=../asmjit" }
-          - { title: "diag-asan"       , host: "ubuntu-latest" , arch: "x64"    , cc: "clang"   , conf: "Release", diagnostics: "address"      , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "diag-msan"       , host: "ubuntu-latest" , arch: "x64"    , cc: "clang"   , conf: "Release", diagnostics: "memory"       , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "diag-ubsan"      , host: "ubuntu-latest" , arch: "x64"    , cc: "clang"   , conf: "Release", diagnostics: "undefined"    , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "diag-valgrind"   , host: "ubuntu-latest" , arch: "x64"    , cc: "clang"   , conf: "Release", diagnostics: "valgrind"     , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "gcc-12"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "gcc-12"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "gcc-12"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "gcc-12"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "gcc-13"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "gcc-13"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "gcc-13"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "gcc-13"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "clang-17", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "clang-17", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "clang-17", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "clang-17", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "clang-18", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x86"    , cc: "clang-18", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "clang-18", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "linux"           , host: "ubuntu-22.04"  , arch: "x64"    , cc: "clang-18", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "macos"           , host: "macos-13"      , arch: "x64"    , cc: "gcc-14"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "macos"           , host: "macos-13"      , arch: "x64"    , cc: "gcc-14"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "macos"           , host: "macos-13"      , arch: "x64"    , cc: "clang"   , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "macos"           , host: "macos-13"      , arch: "x64"    , cc: "clang"   , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "windows"         , host: "windows-2022"  , arch: "x86"    , cc: "vs2022"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "windows"         , host: "windows-2022"  , arch: "x86"    , cc: "vs2022"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "windows"         , host: "windows-2022"  , arch: "x64"    , cc: "vs2022"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
-          - { title: "windows"         , host: "windows-2022"  , arch: "x64"    , cc: "vs2022"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=ON" }
+          - { title: "diag-analyze"    , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=0", diagnostics: "analyze-build" }
+          - { title: "diag-asan"       , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1", diagnostics: "asan"          }
+          - { title: "diag-msan"       , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1", diagnostics: "msan"          }
+          - { title: "diag-ubsan"      , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1", diagnostics: "ubsan"         }
+          - { title: "diag-hardened"   , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1", diagnostics: "hardened"      }
+          - { title: "diag-valgrind"   , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1", diagnostics: "valgrind"      }
+          - { title: "lang-c++20"      , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1,CMAKE_CXX_FLAGS=-std=c++20" }
+          - { title: "lang-c++23"      , host: "ubuntu-latest"   , arch: "x64"    , cc: "clang-19", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1,CMAKE_CXX_FLAGS=-std=c++23" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "gcc-12"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "gcc-12"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "gcc-12"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "gcc-12"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "gcc-13"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "gcc-13"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "gcc-13"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "gcc-13"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "clang-17", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "clang-17", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "clang-17", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "clang-17", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "clang-18", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x86"    , cc: "clang-18", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "clang-18", conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "linux"           , host: "ubuntu-22.04"    , arch: "x64"    , cc: "clang-18", conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "macos"           , host: "macos-13"        , arch: "x64"    , cc: "gcc-14"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "macos"           , host: "macos-13"        , arch: "x64"    , cc: "gcc-14"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "macos"           , host: "macos-13"        , arch: "x64"    , cc: "clang"   , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "macos"           , host: "macos-13"        , arch: "x64"    , cc: "clang"   , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "windows"         , host: "windows-2022"    , arch: "x86"    , cc: "vs2022"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "windows"         , host: "windows-2022"    , arch: "x86"    , cc: "vs2022"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "windows"         , host: "windows-2022"    , arch: "x64"    , cc: "vs2022"  , conf: "Debug"  , defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
+          - { title: "windows"         , host: "windows-2022"    , arch: "x64"    , cc: "vs2022"  , conf: "Release", defs: "ASMJIT_DIR=../asmjit,ASMTK_TEST=1" }
 
     name: "${{matrix.title}}/${{matrix.arch}}, ${{matrix.cc}} ${{matrix.conf}}"
     runs-on: "${{matrix.host}}"
@@ -71,13 +73,11 @@ jobs:
           python-version: "3.x"
 
       - name: "Build & Test"
-        if: ${{!matrix.host}}
         run: python build-actions/action.py
-               --step=all
-               --compiler=${{matrix.cc}}
-               --architecture=${{matrix.arch}}
                --source-dir=asmtk
                --config=asmtk/.github/workflows/build-config.json
-               --problem-matcher=auto
-               --build-type=${{matrix.build_type}}
+               --compiler=${{matrix.cc}}
+               --diagnostics=${{matrix.diagnostics}}
+               --architecture=${{matrix.arch}}
+               --build-type=${{matrix.conf}}
                --build-defs=${{matrix.defs}}

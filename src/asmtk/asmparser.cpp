@@ -114,10 +114,10 @@ static uint32_t x86RegisterCount(Arch arch, RegType regType) noexcept {
   if (arch == Arch::kX86)
     return 8;
 
-  if (regType == RegType::kX86_St || regType == RegType::kX86_Mm || regType == RegType::kX86_KReg || regType == RegType::kX86_Tmm)
+  if (regType == RegType::kX86_St || regType == RegType::kX86_Mm || regType == RegType::kMask || regType == RegType::kTile)
     return 8;
 
-  if (regType == RegType::kX86_Xmm || regType == RegType::kX86_Ymm || regType == RegType::kX86_Zmm)
+  if (regType == RegType::kVec128 || regType == RegType::kVec256 || regType == RegType::kVec512)
     return 32;
 
   return 16;
@@ -177,25 +177,25 @@ static bool x86ParseRegister(AsmParser& parser, Operand_& op, const uint8_t* s, 
     if (c0 <= 'd') {
       rId = gpLetterToRegIndex[c0 - 'a'];
 
-      rType = RegType::kX86_GpbLo;
+      rType = RegType::kGp8Lo;
       if (c1 == 'l') goto Done;
 
-      rType = RegType::kX86_GpbHi;
+      rType = RegType::kGp8Hi;
       if (c1 == 'h') goto Done;
 
-      rType = RegType::kX86_Gpw;
+      rType = RegType::kGp16;
       if (c1 == 'x') goto Done;
     }
 
     if (c1 == 's') {
       rId = srLetterToRegIndex[c0 - 'a'];
-      rType = RegType::kX86_SReg;
+      rType = RegType::kSegment;
 
       if (rId != x86::Reg::kIdBad)
         goto Done;
     }
 
-    rType = RegType::kX86_Gpw;
+    rType = RegType::kGp16;
     goto TrySpBpSiDi;
   }
 
@@ -206,16 +206,16 @@ static bool x86ParseRegister(AsmParser& parser, Operand_& op, const uint8_t* s, 
   // [RIP]
   if (size == 3) {
     if (c2 == 'l') {
-      rType = RegType::kX86_GpbLo;
+      rType = RegType::kGp8Lo;
       goto TrySpBpSiDi;
     }
 
     if (c0 == 'e' || c0 == 'r') {
       cn = (c1 << 8) | c2;
-      rType = (c0 == 'e') ? RegType::kX86_Gpd : RegType::kX86_Gpq;
+      rType = (c0 == 'e') ? RegType::kGp32 : RegType::kGp64;
 
       if (c0 == 'r' && cn == COMB_CHAR_2('i', 'p')) {
-        rType = RegType::kX86_Rip;
+        rType = RegType::kPC;
         goto Done;
       }
 
@@ -235,27 +235,27 @@ TrySpBpSiDi:
   // [R?|R?B|R?W|R?D]
   if (c0 == 'r') {
     s++;
-    rType = RegType::kX86_Gpq;
+    rType = RegType::kGp64;
 
     // Handle 'b', 'w', and 'd' suffixes.
     c2 = Support::asciiToLower<uint32_t>(sEnd[-1]);
     if (c2 == 'b')
-      rType = RegType::kX86_GpbLo;
+      rType = RegType::kGp8Lo;
     else if (c2 == 'w')
-      rType = RegType::kX86_Gpw;
+      rType = RegType::kGp16;
     else if (c2 == 'd')
-      rType = RegType::kX86_Gpd;
-    sEnd -= (rType != RegType::kX86_Gpq);
+      rType = RegType::kGp32;
+    sEnd -= (rType != RegType::kGp64);
   }
   // [XMM?|YMM?|ZMM?]
   else if (c0 >= 'x' && c0 <= 'z' && c1 == 'm' && c2 == 'm') {
     s += 3;
-    rType = RegType(uint32_t(RegType::kX86_Xmm) + uint32_t(c0 - 'x'));
+    rType = RegType(uint32_t(RegType::kVec128) + uint32_t(c0 - 'x'));
   }
   // [K?]
   else if (c0 == 'k') {
     s++;
-    rType = RegType::kX86_KReg;
+    rType = RegType::kMask;
   }
   // [ST?|FP?]
   else if ((c0 == 's' && c1 == 't') | (c0 == 'f' && c1 == 'p')) {
@@ -275,17 +275,17 @@ TrySpBpSiDi:
   // [TMM?]
   else if (c0 == 't' && c1 == 'm' && c2 == 'm') {
     s += 3;
-    rType = RegType::kX86_Tmm;
+    rType = RegType::kTile;
   }
   // [CR?]
   else if (c0 == 'c' && c1 == 'r') {
     s += 2;
-    rType = RegType::kX86_CReg;
+    rType = RegType::kControl;
   }
   // [DR?]
   else if (c0 == 'd' && c1 == 'r') {
     s += 2;
-    rType = RegType::kX86_DReg;
+    rType = RegType::kDebug;
   }
   else {
     return false;
@@ -316,7 +316,7 @@ TrySpBpSiDi:
     return false;
 
 Done:
-  op._initReg(ArchTraits::byArch(Arch::kX64).regTypeToSignature(rType), rId);
+  op._initReg(RegUtils::signatureOf(rType), rId);
   return true;
 }
 
@@ -466,7 +466,7 @@ static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) 
   if (type == AsmTokenType::kSym) {
     // Try register.
     if (x86ParseRegister(parser, dst, token->data(), token->size())) {
-      if (!dst.as<x86::Reg>().isSReg())
+      if (!dst.as<x86::Reg>().isSegmentReg())
         return kErrorOk;
 
       // A segment register followed by a colon (':') describes a segment of a
@@ -502,7 +502,7 @@ static Error x86ParseOperand(AsmParser& parser, Operand_& dst, AsmToken* token) 
       // Parse segment prefix otherwise.
       if (type == AsmTokenType::kSym) {
         // Segment register.
-        if (!x86ParseRegister(parser, seg, token->data(), token->size()) || !seg.as<x86::Reg>().isSReg())
+        if (!x86ParseRegister(parser, seg, token->data(), token->size()) || !seg.as<Reg>().isSegmentReg())
           return DebugUtils::errored(kErrorInvalidAddress);
 
         type = parser.nextToken(token);
@@ -630,7 +630,7 @@ MemOp:
           return DebugUtils::errored(kErrorInvalidAddress);
 
         // Reverse base and index if base is a vector register.
-        if (x86::Reg::isVec(base)) {
+        if (base.isVec()) {
           if (index.isReg())
             return DebugUtils::errored(kErrorInvalidAddress);
           std::swap(base, index);
@@ -642,7 +642,7 @@ MemOp:
             if (!Support::isUInt32(int64_t(offset)))
               return DebugUtils::errored(kErrorInvalidAddress64Bit);
 
-            if (base.as<BaseReg>().isReg(RegType::kX86_Gpq))
+            if (base.as<Reg>().isReg(RegType::kGp64))
               return DebugUtils::errored(kErrorInvalidAddress64BitZeroExtension);
           }
 
@@ -1042,9 +1042,11 @@ static Error x86FixupInstruction(AsmParser& parser, BaseInst& inst, Operand_* op
     if (isStr) {
       if (count == 0) {
         OperandSignature regSignature = OperandSignature{
-          memSize == 1 ? x86::GpbLo::kSignature :
-          memSize == 2 ? x86::Gpw::kSignature :
-          memSize == 4 ? x86::Gpd::kSignature : x86::Gpq::kSignature};
+          memSize == 1 ? RegTraits<RegType::kGp8Lo>::kSignature :
+          memSize == 2 ? RegTraits<RegType::kGp16 >::kSignature :
+          memSize == 4 ? RegTraits<RegType::kGp32 >::kSignature :
+                         RegTraits<RegType::kGp64 >::kSignature
+        };
 
         // String instructions aliases.
         count = 2;
@@ -1052,8 +1054,8 @@ static Error x86FixupInstruction(AsmParser& parser, BaseInst& inst, Operand_* op
           case x86::Inst::kIdCmps: operands[0] = emitter->ptr_zsi(); operands[1] = emitter->ptr_zdi(); break;
           case x86::Inst::kIdMovs: operands[0] = emitter->ptr_zdi(); operands[1] = emitter->ptr_zsi(); break;
           case x86::Inst::kIdLods:
-          case x86::Inst::kIdScas: operands[0] = BaseReg(regSignature, x86::Gp::kIdAx); operands[1] = emitter->ptr_zdi(); break;
-          case x86::Inst::kIdStos: operands[0] = emitter->ptr_zdi(); operands[1] = BaseReg(regSignature, x86::Gp::kIdAx); break;
+          case x86::Inst::kIdScas: operands[0] = Reg(regSignature, x86::Gp::kIdAx); operands[1] = emitter->ptr_zdi(); break;
+          case x86::Inst::kIdStos: operands[0] = emitter->ptr_zdi(); operands[1] = Reg(regSignature, x86::Gp::kIdAx); break;
         }
       }
 
@@ -1121,10 +1123,9 @@ Error AsmParser::parseCommand() noexcept {
       ASMJIT_PROPAGATE(_emitter->bind(label));
 
       // Must be valid if we passed through asmHandleSymbol() and bind().
-      LabelEntry* le = _emitter->code()->labelEntry(label);
-      ASMJIT_ASSERT(le);
+      LabelEntry& le = _emitter->code()->labelEntry(label);
 
-      if (le->type() == LabelType::kGlobal)
+      if (le.labelType() == LabelType::kGlobal)
         _currentGlobalLabelId = label.id();
 
       return kErrorOk;
