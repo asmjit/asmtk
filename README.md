@@ -82,13 +82,13 @@ int main(int argc, char* argv[]) {
     "vaddpd zmm0, zmm1, [rax + 128]\n");
 
   // Error handling (use asmjit::ErrorHandler for more robust error handling).
-  if (err) {
+  if (err != Error::kOk) {
     printf("ERROR: %08x (%s)\n", err, DebugUtils::errorAsString(err));
     return 1;
   }
 
   // Now you can print the code, which is stored in the first section (.text).
-  CodeBuffer& buffer = code.sectionById(0)->buffer();
+  CodeBuffer& buffer = code.section_by_id(0)->buffer();
   dumpCode(buffer.data(), buffer.size());
 
   return 0;

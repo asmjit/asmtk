@@ -23,11 +23,11 @@ namespace ParserUtils {
 
 class WordParser {
 public:
-  #if ASMJIT_ARCH_BITS == 32
+#if ASMJIT_ARCH_BITS == 32
   typedef uint32_t Value;
-  #else
+#else
   typedef uint64_t Value;
-  #endif
+#endif
 
   static constexpr uint32_t kNumValues =
     uint32_t((8 + sizeof(Value) - 1) / sizeof(Value));
@@ -41,17 +41,17 @@ public:
   }
 
   template<typename T>
-  inline void addChar(const T* input, size_t i) noexcept {
+  inline void add_char(const T* input, size_t i) noexcept {
     size_t nIndex = i / sizeof(Value);
     size_t nByte  = i % sizeof(Value);
     _value[nIndex] |= Value(uint8_t(input[i])) << (nByte * 8u);
   }
 
   template<typename T>
-  inline void addLowercasedChar(const T* input, size_t i) noexcept {
+  inline void add_lowercased_char(const T* input, size_t i) noexcept {
     size_t nIndex = i / sizeof(Value);
     size_t nByte  = i % sizeof(Value);
-    _value[nIndex] |= Value(asmjit::Support::asciiToLower(uint8_t(input[i]))) << (nByte * 8u);
+    _value[nIndex] |= Value(asmjit::Support::ascii_to_lower(uint8_t(input[i]))) << (nByte * 8u);
   }
 
   inline bool test(char x0, char x1 = '\0', char x2 = '\0', char x3 = '\0') const noexcept {
@@ -72,12 +72,12 @@ public:
                         (uint32_t(uint8_t(x5)) <<  8) |
                         (uint32_t(uint8_t(x6)) << 16) |
                         (uint32_t(uint8_t(x7)) << 24) ;
-    #if ASMJIT_ARCH_BITS == 32
+#if ASMJIT_ARCH_BITS == 32
     return (_value[0] == pattern0) &
            (_value[1] == pattern1) ;
-    #else
+#else
     return (_value[0] == (uint64_t(pattern0) | (uint64_t(pattern1) << 32)));
-    #endif
+#endif
   }
 
   Value _value[kNumValues];

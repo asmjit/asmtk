@@ -10,14 +10,14 @@ public:
     : argc(argc),
       argv(argv) {}
 
-  bool hasKey(const char* key) const {
+  bool has_key(const char* key) const {
     for (int i = 0; i < argc; i++)
       if (strcmp(argv[i], key) == 0)
         return true;
     return false;
   }
 
-  const char* valueOf(const char* key) const {
+  const char* value_of(const char* key) const {
     size_t keySize = strlen(key);
     size_t argSize = 0;
 

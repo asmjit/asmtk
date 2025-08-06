@@ -49,8 +49,8 @@ struct AsmToken {
     int64_t _i64;
     uint64_t _u64;
 
-    char _valueChars[8];
-    uint8_t _valueBytes[8];
+    char _value_chars[8];
+    uint8_t _value_bytes[8];
   };
 
   //! \}
@@ -74,16 +74,16 @@ struct AsmToken {
   inline const uint8_t* data() const noexcept { return _data; }
   inline size_t size() const noexcept { return _size; }
 
-  inline uint8_t dataAt(size_t index) const noexcept {
+  inline uint8_t data_at(size_t index) const noexcept {
     ASMJIT_ASSERT(index < _size);
     return _data[index];
   }
 
-  inline double f64Value() const noexcept { return _f64; }
-  inline int64_t i64Value() const noexcept { return _i64; }
-  inline uint64_t u64Value() const noexcept { return _u64; }
-  inline const char* valueChars() const noexcept { return _valueChars; }
-  inline const uint8_t* valueBytes() const noexcept { return _valueBytes; }
+  inline double f64_value() const noexcept { return _f64; }
+  inline int64_t i64_value() const noexcept { return _i64; }
+  inline uint64_t u64_value() const noexcept { return _u64; }
+  inline const char* value_chars() const noexcept { return _value_chars; }
+  inline const uint8_t* value_bytes() const noexcept { return _value_bytes; }
 
   inline void reset() noexcept {
     _type = AsmTokenType::kEnd;
@@ -92,15 +92,15 @@ struct AsmToken {
     _u64 = 0;
   }
 
-  inline AsmTokenType setData(AsmTokenType type, const uint8_t* data, size_t size) noexcept {
+  inline AsmTokenType set_data(AsmTokenType type, const uint8_t* data, size_t size) noexcept {
     _data = data;
     _size = size;
     _type = type;
     return type;
   }
 
-  inline AsmTokenType setData(AsmTokenType type, const uint8_t* data, const uint8_t* end) noexcept {
-    return setData(type, data, (size_t)(end - data));
+  inline AsmTokenType set_data(AsmTokenType type, const uint8_t* data, const uint8_t* end) noexcept {
+    return set_data(type, data, (size_t)(end - data));
   }
 };
 
@@ -123,10 +123,10 @@ public:
   ASMTK_API ~AsmTokenizer() noexcept;
 
   //! Parses a next `token` and advances.
-  ASMTK_API AsmTokenType next(AsmToken* token, ParseFlags parseFlags = ParseFlags::kNone) noexcept;
+  ASMTK_API AsmTokenType next(AsmToken* token, ParseFlags parse_flags = ParseFlags::kNone) noexcept;
 
   //! Puts a token back to the tokenizer so that `next()` would parse it again.
-  inline void putBack(AsmToken* token) noexcept {
+  inline void put_back(AsmToken* token) noexcept {
     _cur = token->data();
   }
 
@@ -134,7 +134,7 @@ public:
   //! have to be null terminated as the tokenizer would never go beyond the
   //! `size` specified. This means that the tokenizer can be used with string
   //! views.
-  inline void setInput(const uint8_t* input, size_t size) noexcept {
+  inline void set_input(const uint8_t* input, size_t size) noexcept {
     _input = input;
     _end = input + size;
     _cur = input;

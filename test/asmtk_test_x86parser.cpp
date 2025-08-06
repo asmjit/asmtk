@@ -11,13 +11,13 @@ using namespace asmjit;
 using namespace asmtk;
 
 struct TestEntry {
-  uint64_t baseAddress;
+  uint64_t base_address;
   Arch arch;
-  uint8_t mustPass;
-  uint8_t asmSize;
-  uint8_t mcSize;
-  char machineCode[16];
-  char asmString[64];
+  uint8_t must_pass;
+  uint8_t asm_size;
+  uint8_t machine_code_size;
+  char machine_code[16];
+  char asm_string[64];
 };
 
 #define X86_PASS(BASE, MACHINE_CODE, ASM_STRING) { \
@@ -66,7 +66,7 @@ struct TestEntry {
 //   - Capstone - https://github.com/aquynh/capstone
 //   - XEDParse - https://github.com/x64dbg/XEDParse
 //   - LLVM     - https://github.com/llvm/llvm-project/tree/master/llvm/test/MC/X86
-static const TestEntry testEntries[] = {
+static const TestEntry test_entries[] = {
   // Comments.
   X86_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "mov al, 0 ; Standard comment"),
   X86_PASS(RELOC_BASE_ADDRESS, "\xB0\x00"                                         , "mov al, 0 // C/C++ comment"),
@@ -1042,61 +1042,61 @@ struct TestStats {
 };
 
 struct TestOptions {
+  bool only_failures;
+
   inline TestOptions() { memset(this, 0, sizeof(*this)); }
-  bool onlyFailures;
 };
 
-static void dumpHex(const char* s, size_t count) {
+static void dump_hex(const char* s, size_t count) {
   for (size_t i = 0; i < count; i++)
     printf("%02X", unsigned(uint8_t(s[i])));
 }
 
-static bool runTests(TestStats& out, const TestOptions& options, const TestEntry* entries, size_t count) {
+static bool run_tests(TestStats& out, const TestOptions& options, Span<const TestEntry> entries) {
   out.passed = 0;
   out.failed = 0;
-  out.total  = uint32_t(count);
+  out.total  = uint32_t(entries.size());
 
-  for (size_t i = 0; i < count; i++) {
-    const TestEntry& entry = entries[i];
+  for (const TestEntry& entry : entries) {
     const char* arch = entry.arch == Arch::kX86 ? "X86" : "X64";
 
     // Initialize Environment with the requested architecture.
     Environment environment;
-    environment.setArch(entry.arch);
+    environment.set_arch(entry.arch);
 
     // Initialize CodeHolder.
     CodeHolder code;
-    Error err = code.init(environment, entry.baseAddress);
+    Error err = code.init(environment, entry.base_address);
 
-    if (err) {
-      printf("CodeHolder.init(): %s [FAILED]\n", DebugUtils::errorAsString(err));
+    if (err != Error::kOk) {
+      printf("CodeHolder.init(): %s [FAILED]\n", DebugUtils::error_as_string(err));
 
       out.failed++;
       continue;
     }
 
     x86::Assembler a(&code);
-    err = AsmParser(&a).parse(entry.asmString, entry.asmSize);
+    err = AsmParser(&a).parse(entry.asm_string, entry.asm_size);
 
-    if (err) {
-      if (!entry.mustPass) {
-        if (!options.onlyFailures) {
-          printf(" %s: %-55s -> %s [OK]\n", arch, entry.asmString, DebugUtils::errorAsString(err));
+    if (err != Error::kOk) {
+      if (!entry.must_pass) {
+        if (!options.only_failures) {
+          printf(" %s: %-55s -> %s [OK]\n", arch, entry.asm_string, DebugUtils::error_as_string(err));
         }
         out.passed++;
       }
       else {
-        printf("-%s: %-55s -> %s [FAILED]\n", arch, entry.asmString, DebugUtils::errorAsString(err));
+        printf("-%s: %-55s -> %s [FAILED]\n", arch, entry.asm_string, DebugUtils::error_as_string(err));
         out.failed++;
       }
     }
     else {
-      CodeBuffer& buf = code.sectionById(0)->buffer();
+      CodeBuffer& buf = code.section_by_id(0)->buffer();
 
-      if (entry.mustPass && buf.size() == entry.mcSize && memcmp(buf.data(), entry.machineCode, entry.mcSize) == 0) {
-        if (!options.onlyFailures) {
-          printf(" %s: %-55s -> ", arch, entry.asmString);
-          dumpHex(reinterpret_cast<const char*>(buf.data()), buf.size());
+      if (entry.must_pass && buf.size() == entry.machine_code_size && memcmp(buf.data(), entry.machine_code, entry.machine_code_size) == 0) {
+        if (!options.only_failures) {
+          printf(" %s: %-55s -> ", arch, entry.asm_string);
+          dump_hex(reinterpret_cast<const char*>(buf.data()), buf.size());
           printf(" [OK]\n");
         }
 
@@ -1104,17 +1104,17 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
         continue;
       }
       else {
-        printf("-%s: %-55s -> ", arch, entry.asmString);
-        dumpHex(reinterpret_cast<const char*>(buf.data()), buf.size());
+        printf("-%s: %-55s -> ", arch, entry.asm_string);
+        dump_hex(reinterpret_cast<const char*>(buf.data()), buf.size());
 
-        if (entry.mustPass) {
+        if (entry.must_pass) {
           printf(" [FAILED]\n");
 
-          size_t numSpaces = 1 + strlen(arch) + 2 + 55;
-          for (size_t j = 0; j < numSpaces; j++) printf(" ");
+          size_t num_spaces = 1 + strlen(arch) + 2 + 55;
+          for (size_t j = 0; j < num_spaces; j++) printf(" ");
 
           printf(" != ");
-          dumpHex(entry.machineCode, entry.mcSize);
+          dump_hex(entry.machine_code, entry.machine_code_size);
           printf(" [EXPECTED]\n");
         }
         else {
@@ -1130,16 +1130,16 @@ static bool runTests(TestStats& out, const TestOptions& options, const TestEntry
 }
 
 int main(int argc, char* argv[]) {
-  CmdLine cmdLine(argc, argv);
+  CmdLine cmd_line(argc, argv);
 
   TestStats stats;
   TestOptions options;
 
-  if (cmdLine.hasKey("--only-failures"))
-    options.onlyFailures = true;
+  if (cmd_line.has_key("--only-failures"))
+    options.only_failures = true;
 
-  bool allPassed = runTests(stats, options, testEntries, ASMJIT_ARRAY_SIZE(testEntries));
-  if (allPassed) {
+  bool all_passed = run_tests(stats, options, Span<const TestEntry>::from_array(test_entries));
+  if (all_passed) {
     printf("All %u tests passed!\n", stats.total);
     return 0;
   }

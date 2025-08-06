@@ -69,12 +69,12 @@ static bool isCommand(const char* str, const char* cmd) {
 
 int main(int argc, char* argv[]) {
   CmdLine cmd(argc, argv);
-  const char* archArg = cmd.valueOf("--arch");
-  const char* baseArg = cmd.valueOf("--base");
+  const char* archArg = cmd.value_of("--arch");
+  const char* baseArg = cmd.value_of("--base");
 
   Environment environment = Environment::host();
   Arch arch = environment.arch();
-  uint64_t baseAddress = Globals::kNoBaseAddress;
+  uint64_t base_address = Globals::kNoBaseAddress;
 
   if (archArg) {
     if (strcmp(archArg, "x86") == 0) {
@@ -94,9 +94,9 @@ int main(int argc, char* argv[]) {
 
   if (baseArg) {
     size_t size = strlen(baseArg);
-    size_t maxSize = environment.arch() == Arch::kX64 ? 16 : 8;
+    size_t max_size = environment.arch() == Arch::kX64 ? 16 : 8;
 
-    if (!size || size > maxSize || !hexToU64(baseAddress, baseArg, size)) {
+    if (!size || size > max_size || !hexToU64(base_address, baseArg, size)) {
       printf("Invalid --base parameter\n");
       return 1;
     }
@@ -115,14 +115,14 @@ int main(int argc, char* argv[]) {
   printf("  - Enter '.exit' (or Ctrl+D) to exit.\n"                         );
   printf("===============================================================\n");
 
-  environment.setArch(arch);
+  environment.set_arch(arch);
 
   StringLogger logger;
-  logger.addFlags(FormatFlags::kMachineCode);
+  logger.add_flags(FormatFlags::kMachineCode);
 
   CodeHolder code;
-  code.init(environment, baseAddress);
-  code.setLogger(&logger);
+  code.init(environment, base_address);
+  code.set_logger(&logger);
 
   x86::Assembler a(&code);
   AsmParser p(&a);
@@ -148,14 +148,14 @@ int main(int argc, char* argv[]) {
     if (isCommand(input, ".clear")) {
       // Detaches everything.
       code.reset(ResetPolicy::kSoft);
-      code.init(environment, baseAddress);
-      code.setLogger(&logger);
+      code.init(environment, base_address);
+      code.set_logger(&logger);
       code.attach(&a);
       continue;
     }
 
     if (isCommand(input, ".print")) {
-      CodeBuffer& buffer = code.sectionById(0)->buffer();
+      CodeBuffer& buffer = code.section_by_id(0)->buffer();
       dumpCode(buffer.data(), buffer.size());
       continue;
     }
@@ -163,9 +163,9 @@ int main(int argc, char* argv[]) {
     logger.clear();
     Error err = p.parse(input);
 
-    if (err == kErrorOk) {
+    if (err == Error::kOk) {
       const char* log = logger.data();
-      size_t i, size = logger.dataSize();
+      size_t i, size = logger.data_size();
 
       // Skip the instruction part, and keep only the comment part.
       for (i = 0; i < size; i++) {
@@ -179,7 +179,7 @@ int main(int argc, char* argv[]) {
         printf("%.*s", (int)(size - i), log + i);
     }
     else {
-      fprintf(stdout, "ERROR: 0x%08X: %s\n", err, DebugUtils::errorAsString(err));
+      fprintf(stdout, "ERROR: 0x%08X: %s\n", err, DebugUtils::error_as_string(err));
     }
   }
 

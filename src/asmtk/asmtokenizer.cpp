@@ -94,19 +94,19 @@ AsmTokenizer::AsmTokenizer() noexcept
 
 AsmTokenizer::~AsmTokenizer() noexcept {}
 
-AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept {
+AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parse_flags) noexcept {
   const uint8_t* cur = _cur;
   const uint8_t* end = _end;
 
   // Skip spaces.
   const uint8_t* start = cur;
   if (cur == end)
-    return token->setData(AsmTokenType::kEnd, start, cur);
+    return token->set_data(AsmTokenType::kEnd, start, cur);
 
   uint32_t c = cur[0];
   uint32_t m = CharMap[c];
-  uint32_t stateFlags = 0;
-  bool isComment = false;
+  uint32_t state_flags = 0;
+  bool is_comment = false;
 
   // Skip Whitespaces
   // ----------------
@@ -129,12 +129,12 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
   // ------------
 
   if (c == ';')
-    isComment = true;
+    is_comment = true;
 
   if (c == '/' && size_t(end - cur) >= 2 && cur[1] == '/')
-    isComment = true;
+    is_comment = true;
 
-  if (isComment) {
+  if (is_comment) {
     for (;;) {
       if (++cur == end)
         goto End;
@@ -153,20 +153,20 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
   if (c == '$') {
     if (++cur == end) {
       _cur = cur;
-      return token->setData(AsmTokenType::kSym, start, cur);
+      return token->set_data(AsmTokenType::kSym, start, cur);
     }
 
-    stateFlags |= kStateDollarPrefix;
+    state_flags |= kStateDollarPrefix;
     c = cur[0];
     m = CharMap[c];
   }
   else if (c == '.') {
     if (++cur == end) {
       _cur = cur;
-      return token->setData(AsmTokenType::kInvalid, start, cur);
+      return token->set_data(AsmTokenType::kInvalid, start, cur);
     }
 
-    stateFlags |= kStateDotPrefix;
+    state_flags |= kStateDotPrefix;
     c = cur[0];
     m = CharMap[c];
   }
@@ -175,7 +175,7 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
   // ------------
 
   // Only parse numbers if we are not forced to always parse numbers as symbols.
-  if (!asmjit::Support::test(parseFlags, ParseFlags::kParseSymbol) && (stateFlags & kStateDotPrefix) == 0) {
+  if (!asmjit::Support::test(parse_flags, ParseFlags::kParseSymbol) && (state_flags & kStateDotPrefix) == 0) {
     // The number either starts with [0..9], which could contain an optional
     // [0x|0b] prefixes, or $[0-9], which is a hexadecimal prefix as well.
     if (m <= kChar0x9) {
@@ -186,26 +186,26 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
       if (++cur == end) {
         _cur = cur;
         token->_u64 = val;
-        return token->setData(AsmTokenType::kU64, start, cur);
+        return token->set_data(AsmTokenType::kU64, start, cur);
       }
 
       // Parse a binary or hexadecimal number prefixed by [$|0x|0b].
       c = cur[0];
       m = CharMap[c];
 
-      if (val == 0 || (stateFlags & kStateDollarPrefix) != 0) {
-        if (stateFlags & kStateDollarPrefix) {
+      if (val == 0 || (state_flags & kStateDollarPrefix) != 0) {
+        if (state_flags & kStateDollarPrefix) {
           // Hexadecimal number.
           base = 16;
           shift = 4;
-          stateFlags |= kStateNumberPrefix;
+          state_flags |= kStateNumberPrefix;
         }
         else {
           // Parse 'b' or 'x'.
           if (m == kChar0xB || m == kCharAxX) {
             base = 16;
             shift = 4;
-            stateFlags |= kStateNumberPrefix;
+            state_flags |= kStateNumberPrefix;
 
             if (m == kChar0xB) {
               base = 2;
@@ -243,7 +243,7 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
 
         _cur = cur;
         token->_u64 = val;
-        return token->setData(AsmTokenType::kU64, start, cur);
+        return token->set_data(AsmTokenType::kU64, start, cur);
       }
 
       // Parse a decimal number or prepare for parsing a binary/octal/hexadecimal
@@ -251,13 +251,13 @@ AsmTokenType AsmTokenizer::next(AsmToken* token, ParseFlags parseFlags) noexcept
       // decimal parsing now.
 ParseDigits:
       {
-        uint32_t highestDigit = uint32_t(val);
+        uint32_t highest_digit = uint32_t(val);
 
         for (;;) {
           c -= uint32_t('0');
           if (c < 10) {
             val = val * 10 + c;
-            highestDigit = std::max<uint32_t>(highestDigit, c);
+            highest_digit = std::max<uint32_t>(highest_digit, c);
 
             if (++cur == end)
               break;
@@ -268,7 +268,7 @@ ParseDigits:
 
           if (m <= kChar0xF) {
             // Parse an optional 'b' suffix (otherwise it's a hexadecimal number).
-            if (m == 0xB && highestDigit <= 1) {
+            if (m == 0xB && highest_digit <= 1) {
               if (++cur != end) {
                 c = cur[0];
                 m = CharMap[c];
@@ -278,11 +278,11 @@ ParseDigits:
 
               base = 2;
               shift = 1;
-              stateFlags |= kStateNumberSuffix;
+              state_flags |= kStateNumberSuffix;
             }
             else {
 ParseHex:
-              highestDigit = 0xF;
+              highest_digit = 0xF;
 
               while (++cur != end) {
                 c = cur[0];
@@ -302,14 +302,14 @@ ParseHex:
             shift = 4;
 
             cur++;
-            stateFlags |= kStateNumberSuffix;
+            state_flags |= kStateNumberSuffix;
           }
           else if (m == kCharAxO || m == kCharAxQ) {
             base = 8;
             shift = 3;
 
             cur++;
-            stateFlags |= kStateNumberSuffix;
+            state_flags |= kStateNumberSuffix;
           }
           else {
             goto Invalid;
@@ -324,24 +324,24 @@ ParseHex:
           }
         }
 
-        if (highestDigit >= base)
+        if (highest_digit >= base)
           goto Invalid;
 
         if (base != 10) {
-          const uint8_t* altCur = start;
-          const uint8_t* altEnd = cur - ((stateFlags & kStateNumberSuffix) != 0);
+          const uint8_t* alt_cur = start;
+          const uint8_t* alt_end = cur - ((state_flags & kStateNumberSuffix) != 0);
 
           val = 0;
-          while (altCur != altEnd) {
+          while (alt_cur != alt_end) {
             val <<= shift;
-            val += CharMap[*altCur++];
+            val += CharMap[*alt_cur++];
           }
         }
       }
 
       _cur = cur;
       token->_u64 = val;
-      return token->setData(AsmTokenType::kU64, start, cur);
+      return token->set_data(AsmTokenType::kU64, start, cur);
     }
   }
 
@@ -355,7 +355,7 @@ ParseHex:
   }
 
   if (m <= kCharUsd) {
-    uint32_t mSymMax = asmjit::Support::test(parseFlags, ParseFlags::kIncludeDashes) ? kCharDsh : kCharUsd;
+    uint32_t mSymMax = asmjit::Support::test(parse_flags, ParseFlags::kIncludeDashes) ? kCharDsh : kCharUsd;
 
     while (++cur != end) {
       c = cur[0];
@@ -368,7 +368,7 @@ ParseHex:
     }
 
     _cur = cur;
-    return token->setData(AsmTokenType::kSym, start, cur);
+    return token->set_data(AsmTokenType::kSym, start, cur);
   }
 
   // Parse Punctuation
@@ -391,20 +391,20 @@ ParseHex:
       case ':': type = AsmTokenType::kColon   ; break;
     }
     _cur = ++cur;
-    return token->setData(type, start, cur);
+    return token->set_data(type, start, cur);
   }
 
 Invalid:
   _cur = cur;
-  return token->setData(AsmTokenType::kInvalid, start, cur);
+  return token->set_data(AsmTokenType::kInvalid, start, cur);
 
 NL:
   _cur = cur;
-  return token->setData(AsmTokenType::kNL, start, cur);
+  return token->set_data(AsmTokenType::kNL, start, cur);
 
 End:
   _cur = cur;
-  return token->setData(AsmTokenType::kEnd, start, cur);
+  return token->set_data(AsmTokenType::kEnd, start, cur);
 }
 
 } // {asmtk}

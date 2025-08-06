@@ -25,12 +25,12 @@ public:
   asmjit::BaseEmitter* _emitter;
   AsmTokenizer _tokenizer;
 
-  size_t _currentCommandOffset;
-  uint32_t _currentGlobalLabelId;
-  bool _endOfInput;
+  size_t _current_command_offset;
+  uint32_t _current_global_label_id;
+  bool _end_of_input;
 
-  UnknownSymbolHandler _unknownSymbolHandler;
-  void* _unknownSymbolHandlerData;
+  UnknownSymbolHandler _unknown_symbol_handler;
+  void* _unknown_symbol_handler_data;
 
   //! \name Construction & Destruction
   //! \{
@@ -54,38 +54,38 @@ public:
     return reinterpret_cast<const char*>(_tokenizer._input);
   }
 
-  inline bool setInput(const char* input, size_t size = SIZE_MAX) noexcept {
+  inline bool set_input(const char* input, size_t size = SIZE_MAX) noexcept {
     if (size == SIZE_MAX)
       size = strlen(input);
 
-    _tokenizer.setInput(reinterpret_cast<const uint8_t*>(input), size);
-    _currentCommandOffset = 0;
-    _endOfInput = (size == 0);
+    _tokenizer.set_input(reinterpret_cast<const uint8_t*>(input), size);
+    _current_command_offset = 0;
+    _end_of_input = (size == 0);
 
-    return _endOfInput;
+    return _end_of_input;
   }
 
-  inline bool isEndOfInput() const noexcept { return _endOfInput; }
-  inline size_t currentCommandOffset() const noexcept { return _currentCommandOffset; }
+  inline bool is_end_of_input() const noexcept { return _end_of_input; }
+  inline size_t current_command_offset() const noexcept { return _current_command_offset; }
 
-  ASMTK_API AsmTokenType nextToken(AsmToken* token, ParseFlags flags = ParseFlags::kNone) noexcept;
-  ASMTK_API void putTokenBack(AsmToken* token) noexcept;
+  ASMTK_API AsmTokenType next_token(AsmToken* token, ParseFlags flags = ParseFlags::kNone) noexcept;
+  ASMTK_API void put_token_back(AsmToken* token) noexcept;
 
   //! \}
 
   //! \name Unknown Symbol Handler
   //! \{
 
-  inline UnknownSymbolHandler unknownSymbolHandler() const noexcept { return _unknownSymbolHandler; }
-  inline void* unknownSymbolHandlerData() const noexcept { return _unknownSymbolHandlerData; }
+  inline UnknownSymbolHandler unknown_symbol_handler() const noexcept { return _unknown_symbol_handler; }
+  inline void* unknown_symbol_handler_data() const noexcept { return _unknown_symbol_handler_data; }
 
-  inline void setUnknownSymbolHandler(UnknownSymbolHandler handler, void* data = nullptr) noexcept {
-    _unknownSymbolHandler = handler;
-    _unknownSymbolHandlerData = data;
+  inline void set_unknown_symbol_handler(UnknownSymbolHandler handler, void* data = nullptr) noexcept {
+    _unknown_symbol_handler = handler;
+    _unknown_symbol_handler_data = data;
   }
 
-  inline void resetUnknownSymbolHandler() noexcept {
-    setUnknownSymbolHandler((UnknownSymbolHandler)nullptr, nullptr);
+  inline void reset_unknown_symbol_handler() noexcept {
+    set_unknown_symbol_handler((UnknownSymbolHandler)nullptr, nullptr);
   }
 
   //! \}
@@ -93,13 +93,12 @@ public:
   //! \name Parser
   //! \{
 
-  //! Universal method that setups the input and then calls `parseLine()` until
-  //! the end is reached. It returns `kErrorOk` on success (which means that all
-  //! commands were parsed successfully), otherwise and error code describing
-  //! the problem.
+  //! Universal method that setups the input and then calls `parse_command()` until the end is reached. It
+  //! returns `Error::kOk` on success (which means that all commands were parsed successfully), otherwise
+  //! and error code describing the problem.
   ASMTK_API Error parse(const char* input, size_t size = SIZE_MAX) noexcept;
 
-  ASMTK_API Error parseCommand() noexcept;
+  ASMTK_API Error parse_command() noexcept;
 
   //! \}
 };
