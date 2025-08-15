@@ -69,7 +69,7 @@ set(ASMTK_PRIVATE_CFLAGS_DBG "")                 # Private compiler flags used b
 set(ASMTK_PRIVATE_CFLAGS_REL "")                 # Private compiler flags used by release builds.
 
 if (NOT ASMTK_NO_CUSTOM_FLAGS)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" OR "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" OR "x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xMSVC")
     list(APPEND ASMTK_PRIVATE_CFLAGS
       -MP                      # [+] Multi-Process Compilation.
       -GR-                     # [-] Runtime type information.
