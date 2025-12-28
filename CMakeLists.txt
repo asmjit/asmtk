@@ -1,7 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
-
-cmake_policy(PUSH)
-cmake_policy(SET CMP0063 NEW) # Honor visibility properties.
+cmake_minimum_required(VERSION 3.31 FATAL_ERROR)
 
 # Don't create a project if it was already created by another CMakeLists.txt.
 # This allows one library to embed another library without making a collision.
@@ -69,7 +66,7 @@ set(ASMTK_PRIVATE_CFLAGS_DBG "")                 # Private compiler flags used b
 set(ASMTK_PRIVATE_CFLAGS_REL "")                 # Private compiler flags used by release builds.
 
 if (NOT ASMTK_NO_CUSTOM_FLAGS)
-  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" OR "x${CMAKE_CXX_SIMULATE_ID}" STREQUAL "xMSVC")
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC" OR "x${CMAKE_CXX_COMPILER_FRONTEND_VARIANT}" STREQUAL "xMSVC")
     list(APPEND ASMTK_PRIVATE_CFLAGS
       -MP                      # [+] Multi-Process Compilation.
       -GR-                     # [-] Runtime type information.
@@ -109,7 +106,7 @@ endif()
 if (ASMJIT_EXTERNAL)
   find_package(asmjit CONFIG REQUIRED)
 else()
-  include("${ASMJIT_DIR}/CMakeLists.txt")
+  add_subdirectory("${ASMJIT_DIR}" asmjit)
   list(APPEND ASMTK_PRIVATE_CFLAGS ${ASMJIT_CFLAGS})
   list(REMOVE_DUPLICATES ASMTK_PRIVATE_CFLAGS)
 endif()
@@ -224,5 +221,3 @@ if (NOT ASMTK_EMBED)
     endforeach()
   endif()
 endif()
-
-cmake_policy(POP)
